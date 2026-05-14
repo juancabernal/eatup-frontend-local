@@ -1,59 +1,69 @@
-# EatupFrontend
+# Guía de Inicio para Desarrolladores - Módulo de Pagos
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.2.10.
+¡Hola equipo! Esta guía explica cómo trabajar en el frontend del proyecto, cómo configurar su entorno y cómo crear nuevos componentes siguiendo la arquitectura establecida.
 
-## Development server
+## 1. Configuración Inicial (Clonado del Repositorio)
 
-To start a local development server, run:
+Cuando clones el repositorio por primera vez, debes realizar los siguientes pasos:
 
-```bash
-ng serve
+1. **Instalar dependencias**:
+   ```bash
+   cd frontEnd
+   npm install
+   ```
+
+2. **Configurar el entorno**:
+   Crea un archivo llamado `.env.development` en la raíz de la carpeta `frontEnd/`. Este archivo es crucial porque contiene las variables que el frontend necesita para comunicarse con el backend.
+   
+   Contenido base recomendado para `.env.development`:
+   ```env
+   API_URL=http://localhost:8080/api/v1
+   USER_TOKEN=tu_token_de_sesion_aqui
+   LOCATION_ID=a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11
+   ```
+
+3. **Generar el archivo de configuración**:
+   Ejecuta el script que transforma el `.env.development` en un archivo TypeScript que Angular puede entender:
+   ```bash
+   node scripts/generate-env.js
+   ```
+   *Nota: Este script se ejecuta automáticamente al hacer `npm start` o `npm run dev`.*
+
+## 2. Flujo de Creación de Componentes
+
+Seguimos una arquitectura modular. Para el módulo de pagos, todo vive en `src/app/features/payment/`.
+
+### Estructura de Carpetas
+Cada sub-módulo (ej: `cashreceipt`, `paymentmethod`) debe tener esta estructura:
+- `models/`: Interfaces de TypeScript para los datos.
+- `services/`: Servicios para llamadas a la API.
+- `pages/`: Componentes que representan una página completa.
+- `[nombre].routes.ts`: Definición de rutas específicas del sub-módulo.
+
+### Pasos para crear un nuevo flujo:
+1. **Definir el Modelo**: Crea la interfaz en `models/`.
+2. **Crear el Servicio**: Crea el servicio en `services/` usando `ENV.apiUrl` (importado de `@config/env.config`).
+3. **Crear la Página**: Crea el componente en `pages/`. Usa **Signals** para el estado y **Standalone Components**.
+4. **Registrar Rutas**:
+   - Crea el archivo `.routes.ts` en la carpeta del sub-módulo.
+   - Regístralo en `src/app/features/payment/payment.routes.ts` (si existe) o directamente en `src/app/app.routes.ts`.
+
+## 3. Rutas y Navegación
+
+Las rutas principales están en `src/app/app.routes.ts`. Usamos **Lazy Loading** para cargar los módulos de funciones:
+
+```typescript
+{
+  path: 'payment/cashreceipt',
+  loadChildren: () => import('./features/payment/cashreceipt/cashreceipt.routes').then(m => m.CASH_RECEIPT_ROUTES)
+}
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+## 4. Scripts Importantes
 
-## Code scaffolding
+En el `package.json` de `frontEnd/` encontrarás:
+- `npm run dev`: Inicia el servidor de desarrollo y genera el archivo de entorno.
+- `node scripts/generate-env.js`: Solo genera el archivo `src/app/core/config/env.config.ts`.
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
-
-```bash
-ng generate component component-name
-```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
-
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
-
-```bash
-ng build
-```
-
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+---
+*Cualquier duda con gusto.*
