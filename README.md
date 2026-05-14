@@ -9,7 +9,7 @@ Cuando clones el repositorio por primera vez, debes realizar los siguientes paso
 1. **Instalar dependencias**:
    ```bash
    cd frontEnd
-   npm install
+   pnpm install
    ```
 
 2. **Configurar el entorno**:
@@ -27,7 +27,7 @@ Cuando clones el repositorio por primera vez, debes realizar los siguientes paso
    ```bash
    node scripts/generate-env.js
    ```
-   *Nota: Este script se ejecuta automáticamente al hacer `npm start` o `npm run dev`.*
+   *Nota: Este script se ejecuta automáticamente al hacer `pnpm start` o `pnpm run dev`.*
 
 ## 2. Flujo de Creación de Componentes
 
@@ -44,6 +44,11 @@ Cada sub-módulo (ej: `cashreceipt`, `paymentmethod`) debe tener esta estructura
 1. **Definir el Modelo**: Crea la interfaz en `models/`.
 2. **Crear el Servicio**: Crea el servicio en `services/` usando `ENV.apiUrl` (importado de `@config/env.config`).
 3. **Crear la Página**: Crea el componente en `pages/`. Usa **Signals** para el estado y **Standalone Components**.
+   Comando recomendado:
+   ```bash
+   pnpm ng g c features/payment/[sub-modulo]/pages/[nombre] --skip-tests
+   ```
+   puedes cambiar payment tambien por el nombre de tu modulo.
 4. **Registrar Rutas**:
    - Crea el archivo `.routes.ts` en la carpeta del sub-módulo.
    - Regístralo en `src/app/features/payment/payment.routes.ts` (si existe) o directamente en `src/app/app.routes.ts`.
@@ -62,7 +67,7 @@ Las rutas principales están en `src/app/app.routes.ts`. Usamos **Lazy Loading**
 ## 4. Scripts Importantes
 
 En el `package.json` de `frontEnd/` encontrarás:
-- `npm run dev`: Inicia el servidor de desarrollo y genera el archivo de entorno.
+- `pnpm run dev`: Inicia el servidor de desarrollo y genera el archivo de entorno.
 - `node scripts/generate-env.js`: Solo genera el archivo `src/app/core/config/env.config.ts`.
 
 ---
