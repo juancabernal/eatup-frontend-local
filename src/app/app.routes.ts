@@ -40,6 +40,14 @@ export const routes: Routes = [
             m => m.PAYMENT_METHOD_ROUTES
           )
       },
+
+      {
+        path: 'commercial/sales',
+        loadChildren: () =>
+          import('./features/commercial/sales/sales.routes').then(
+            m => m.SALES_ROUTES
+          )
+      },
       {
         path: 'commercial/discount',
          loadChildren: () =>
