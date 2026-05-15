@@ -1,0 +1,74 @@
+<div class="page-header"><div><h1>Ventas</h1><p>Gestiona órdenes, recetas y trazabilidad de ventas.</p></div></div>
+@if (toastMessage()) {<div class="toast" [ngClass]="'toast-' + toastType()"><div class="toast-content"><div class="toast-message">{{ toastMessage() }}</div></div><button class="toast-close" (click)="closeToast()" aria-label="Cerrar">×</button><div class="toast-progress"><span [style.width.%]="toastProgress()"></span></div></div>}
+<div class="pos-grid">
+<section class="catalog card">
+    <div class="catalog-header"><h2>Catálogo de recetas</h2></div>
+    <div class="filters">
+      <input type="text" [ngModel]="searchQuery()" (ngModelChange)="searchQuery.set($event)" placeholder="Buscar por nombre" />
+      <select [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event)"><option value="ALL">Todas</option><option value="ACTIVE">Activas</option><option value="INACTIVE">Inactivas</option></select>
+      <select [ngModel]="visibilityFilter()" (ngModelChange)="visibilityFilter.set($event)"><option value="ALL">Todas las visibilidades</option><option value="VISIBLE">Visibles en menú</option><option value="HIDDEN">Ocultas del menú</option></select>
+      <input type="number" min="0" placeholder="Precio mínimo" [ngModel]="minPrice()" (ngModelChange)="minPrice.set($event === '' ? null : +$event)" />
+      <input type="number" min="0" placeholder="Precio máximo" [ngModel]="maxPrice()" (ngModelChange)="maxPrice.set($event === '' ? null : +$event)" />
+      <select [ngModel]="sortMode()" (ngModelChange)="sortMode.set($event)"><option value="NAME_ASC">Nombre A-Z</option><option value="PRICE_ASC">Precio menor a mayor</option><option value="PRICE_DESC">Precio mayor a menor</option></select>
+    </div>
+    @if (recipeError()) { <div class="empty-state"><p>No se pudieron cargar las recetas.</p><button class="btn btn-soft" (click)="ngOnInit()">Reintentar</button></div> }
+    @if (loadingRecipes()) { <p>Cargando recetas...</p> }
+    @if (!loadingRecipes() && !recipeError()) {
+      <div class="cards">
+        @for (item of filteredRecipes(); track item.id) {
+          <article class="item-card" [class.inactive]="!item.active">
+            <div class="badges"><span class="badge" [class.badge-hidden]="!item.active">{{ item.active ? 'Activa' : 'Inactiva' }}</span><span class="badge" [class.badge-hidden]="!item.visibleInMenu">{{ item.visibleInMenu ? 'Visible' : 'Oculta' }}</span></div>
+            <strong>{{ item.name }}</strong>
+            <span>{{ item.price > 0 ? (item.price | currency:'COP':'symbol':'1.0-0':'es-CO') : 'Precio no disponible' }}</span>
+            <button class="btn btn-soft" [disabled]="!item.active || item.price <= 0" (click)="addToCart(item)">{{ item.active ? 'Agregar' : 'No disponible' }}</button>
+          </article>
+        } @empty { <div class="empty-state"><p>{{ recipes().length === 0 ? 'No hay recetas disponibles.' : 'No encontramos recetas con esos filtros.' }}</p></div> }
+      </div>
+    }
+  </section>
+<aside class="card order-panel">
+  <h2>🛒 Orden actual</h2>
+  <p class="muted">{{ cartItemsCount() }} recetas</p>
+  <div class="meta-grid">
+    <div class="table-picker-row">
+      <div><strong>Vendedor:</strong> {{ selectedSellerName() }}</div>
+      <button class="btn btn-soft picker-button" type="button" (click)="openSellerSelector()">Seleccionar vendedor</button>
+    </div>
+    <div class="table-picker-row">
+      <div><strong>Mesa:</strong> {{ selectedTableLabel() }}</div>
+      <button class="btn btn-soft picker-button" type="button" (click)="openTableSelector()">Seleccionar mesa</button>
+    </div>
+    <div><strong>Sede:</strong> {{ selectedLocationLabel() }}</div>
+  </div>
+
+  <div class="order-items">
+    @for (line of validCartItems(); track line.recipeId) {
+      <article class="order-item">
+        <div class="order-item-info">
+          <strong class="order-item-name">{{ line.recipeName || line.lineDisplayName }}</strong>
+        </div>
+        <div class="order-item-controls">
+          <input class="qty-input" type="number" min="1" [ngModel]="line.quantity" (click)="$event.stopPropagation()" (ngModelChange)="updateQuantity(line.recipeId, +$event)" />
+          <button class="btn btn-soft" (click)="$event.stopPropagation(); openCommentEditor(line)" aria-label="Comentar">💬</button>
+          <button class="btn btn-icon btn-danger" (click)="$event.stopPropagation(); removeFromCart(line.recipeId)" aria-label="Eliminar">🗑</button>
+        </div>
+        @if (line.recipeLineComment && line.recipeLineComment !== 'Sin observaciones') {
+          <p class="line-comment">Comentario: {{ line.recipeLineComment }}</p>
+        }
+      </article>
+    } @empty {
+      <p class="empty-cart">Agrega recetas para iniciar una venta</p>
+    }
+  </div>
+
+  <div class="order-footer">
+    <div class="total-row"><span>Subtotal</span><strong>{{ computeSubtotal() | currency:'COP':'symbol':'1.0-0':'es-CO' }}</strong></div>
+    <div class="total-row total-main"><span>Total</span><strong>{{ computeTotal() | currency:'COP':'symbol':'1.0-0':'es-CO' }}</strong></div>
+    <button class="btn btn-primary" [disabled]="submitting()" (click)="completeSale()">{{ submitting() ? 'Enviando...' : 'Completar venta' }}</button>
+  </div>
+</aside>
+</div>
+
+@if (sellerSelectorOpen()) {<div class="modal-backdrop" (click)="closeSellerSelector()"><div class="table-modal card" (click)="$event.stopPropagation()"><h3>Selecciona un vendedor</h3><input type="text" placeholder="Buscar por nombre o documento" [ngModel]="sellerQuery()" (ngModelChange)="sellerQuery.set($event)"/>@if (loadingSellers()) { <p>Cargando vendedores...</p> }<div class="table-list">@for (seller of filteredSellers(); track seller.id) {<div class="table-item"><div><strong>{{ sellerDisplayName(seller) }}</strong>@if(!isSellerActive(seller)){<span class="badge badge-hidden">Inactivo</span>}</div><button class="btn btn-soft" [disabled]="!isSellerActive(seller)" (click)="selectSeller(seller)">Seleccionar</button></div>} @empty {<p class="empty-cart">No hay vendedores para mostrar.</p>}</div></div></div>}
+@if (tableSelectorOpen()) {<div class="modal-backdrop" (click)="closeTableSelector()"><div class="table-modal card" (click)="$event.stopPropagation()"><h3>Selecciona una mesa</h3><input type="text" placeholder="Buscar por nombre o número" [ngModel]="tableQuery()" (ngModelChange)="tableQuery.set($event)"/>@if (loadingTables()) { <p>Cargando mesas...</p> }<div class="table-list">@for (table of filteredTables(); track table.id) {<div class="table-item"><div><strong>{{ tableLabel(table) }}</strong><span class="badge" [class.badge-hidden]="!isTableAvailable(table)">{{ tableStateLabel(table) }}</span></div><button class="btn btn-soft" [disabled]="!isTableAvailable(table)" (click)="selectTable(table)">Seleccionar</button></div>} @empty {<p class="empty-cart">No hay mesas para mostrar.</p>}</div></div></div>}
+<section class="recent-sales card"><h2>Ventas recientes</h2>@if(loadingSales()){<p>Cargando ventas...</p>}@for (sale of sales(); track sale.id) {<article class="sale-row"><div class="sale-main"><strong>{{ shortSaleCode(sale.id) }}</strong><span class="badge">{{ saleStatusLabel(sale.status) }}</span></div><p class="muted">{{ sale.details.length }} líneas · Total {{ sale.totalAmount | currency:'COP':'symbol':'1.0-0':'es-CO' }} · {{ (sale.createdDate || sale.modifiedDate) | date:'short':'':'es-CO' }}</p><div class="actions"><button class="btn btn-soft" (click)="refreshPreparations(sale.id)">{{ isTraceLoading(sale.id) ? 'Cargando...' : 'Ver trazabilidad' }}</button><button class="btn btn-soft" [disabled]="!canPatchTo(sale.status, 'IN_PROGRESS') || isProcessing(sale.id)" (click)="patchStatus(sale.id, 'IN_PROGRESS')">En proceso</button><button class="btn btn-soft" [disabled]="!canPatchTo(sale.status, 'COMPLETED') || isProcessing(sale.id)" (click)="patchStatus(sale.id, 'COMPLETED')">Completar</button><button class="btn btn-soft" [disabled]="!canPatchTo(sale.status, 'CANCELLED') || isProcessing(sale.id)" (click)="patchStatus(sale.id, 'CANCELLED')">Cancelar venta</button><button class="btn btn-danger" [disabled]="sale.status === 'COMPLETED' || isProcessing(sale.id)" (click)="deleteSale(sale)">Eliminar</button></div><div class="trace-list">@for (trace of tracesBySaleId(sale.id); track trace.id) {<div class="trace-row"><strong>{{ traceRecipeName(trace.recipeId) }}</strong> <span class="badge" [class.badge-hidden]="trace.status==='REJECTED'">{{ traceStatusLabel(trace.status) }}</span><p>{{ trace.observation || 'Sin observaciones' }}</p></div>} @empty {<p class="muted">No hay trazabilidad registrada para esta venta.</p>}</div></article>} @empty {<p class="empty-state">No hay ventas recientes para mostrar.</p>}</section>
