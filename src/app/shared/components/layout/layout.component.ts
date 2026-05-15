@@ -216,8 +216,12 @@ export class LayoutComponent {
       name: 'Commercial',
        expanded: false,
        features: [
+<<<<<<< HEAD
          { name: 'Descuentos', path: '/commercial/discount' },
          { name: 'Ventas', path: '/commercial/sales' }
+=======
+         { name: 'Descuentos', path: '/commercial/discount' }
+>>>>>>> 49f104380523fcb861d822380ad3ba4c929ad527
      ]
     }
   ]);
