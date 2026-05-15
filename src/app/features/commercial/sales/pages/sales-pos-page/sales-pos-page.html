@@ -1,0 +1,67 @@
+<div class="page-header">
+  <div>
+    <h1>Ventas</h1>
+    <p>Punto de venta con procesamiento asíncrono y trazabilidad de inventario.</p>
+  </div>
+</div>
+
+@if (toastMessage()) {
+  <div class="toast" [class]="'toast ' + toastType()">{{ toastMessage() }}</div>
+}
+
+<div class="pos-grid">
+  <section class="catalog">
+    <input type="text" [ngModel]="searchQuery()" (ngModelChange)="searchQuery.set($event)" placeholder="Buscar receta..." />
+    <div class="cards">
+      @for (item of filteredItems; track item.id) {
+        <button class="item-card" (click)="addToCart(item)">
+          <strong>{{ item.name }}</strong>
+          <span>${{ item.price }}</span>
+          <small>Stock: {{ item.stock ?? 'N/D' }}</small>
+        </button>
+      } @empty { <p>No hay recetas/productos disponibles.</p> }
+    </div>
+  </section>
+
+  <aside class="cart">
+    <h2>Orden actual</h2>
+    <input type="text" [ngModel]="selectedSellerId()" (ngModelChange)="selectedSellerId.set($event)" placeholder="Seller ID" />
+    <input type="text" [ngModel]="selectedLocationId()" (ngModelChange)="selectedLocationId.set($event)" placeholder="Location ID" />
+    <input type="text" [ngModel]="selectedTableId()" (ngModelChange)="selectedTableId.set($event)" placeholder="Mesa" />
+
+    @for (line of currentCart(); track line.recipeId) {
+      <div class="cart-line">
+        <div>{{ line.name }}</div>
+        <input type="number" min="1" [ngModel]="line.quantity" (ngModelChange)="updateQuantity(line.recipeId, +$event)" />
+        <input type="text" [ngModel]="line.recipeLineComment" (ngModelChange)="updateComment(line.recipeId, $event)" placeholder="Observación" />
+        <span>${{ line.quantity * line.unitPrice }}</span>
+        <button (click)="removeFromCart(line.recipeId)" aria-label="Eliminar línea">✕</button>
+      </div>
+    } @empty { <p>Agrega productos a la venta.</p> }
+
+    <h3>Total: ${{ computeTotal() }}</h3>
+    <button [disabled]="submitting()" (click)="completeSale()">{{ submitting() ? 'Enviando...' : 'Completar venta' }}</button>
+  </aside>
+</div>
+
+<section class="recent-sales">
+  <h2>Ventas recientes</h2>
+  @if (loading()) { <p>Cargando...</p> }
+  @if (!loading() && sales().length === 0) { <p>No hay ventas recientes.</p> }
+  @for (sale of sales(); track sale.id) {
+    <article class="sale-row">
+      <div><strong>{{ sale.id }}</strong> · {{ sale.status }} · ${{ sale.totalAmount }}</div>
+      <div class="actions">
+        <button [disabled]="!canPatchTo(sale.status, 'IN_PROGRESS') || isProcessing(sale.id)" (click)="patchStatus(sale.id, 'IN_PROGRESS')">IN_PROGRESS</button>
+        <button [disabled]="!canPatchTo(sale.status, 'COMPLETED') || isProcessing(sale.id)" (click)="patchStatus(sale.id, 'COMPLETED')">COMPLETED</button>
+        <button [disabled]="!canPatchTo(sale.status, 'CANCELLED') || isProcessing(sale.id)" (click)="patchStatus(sale.id, 'CANCELLED')">CANCELLED</button>
+        <button [disabled]="sale.status === 'COMPLETED' || isProcessing(sale.id)" (click)="deleteSale(sale)">Eliminar</button>
+        <button (click)="refreshPreparations(sale.id)">Ver trazabilidad</button>
+      </div>
+      @if (isProcessing(sale.id)) { <small>Procesando venta...</small> }
+      @for (trace of tracesBySaleId(sale.id); track trace.id) {
+        <div class="trace" [class.rejected]="trace.status === 'REJECTED'">{{ trace.recipeId }} - {{ trace.status }} - {{ trace.observation || 'Sin observaciones' }}</div>
+      }
+    </article>
+  }
+</section>

@@ -42,9 +42,15 @@ export const routes: Routes = [
       },
       {
         path: 'commercial/discount',
-         loadChildren: () =>
+        loadChildren: () =>
           import('./features/commercial/discount/discount.routes')
             .then(m => m.DISCOUNT_ROUTES)
+      },
+      {
+        path: 'commercial/sales',
+        loadChildren: () =>
+          import('./features/commercial/sales/sales.routes')
+            .then(m => m.SALES_ROUTES)
       }
     ]
   },

@@ -216,7 +216,8 @@ export class LayoutComponent {
       name: 'Commercial',
        expanded: false,
        features: [
-         { name: 'Descuentos', path: '/commercial/discount' }
+         { name: 'Descuentos', path: '/commercial/discount' },
+         { name: 'Ventas', path: '/commercial/sales' }
      ]
     }
   ]);
