@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, catchError, throwError } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import { ENV } from '@config/env.config';
 
 export interface Seller {
@@ -14,28 +14,41 @@ export interface Seller {
   active?: boolean;
 }
 
+interface SellerApiResponse {
+  content?: unknown;
+  data?: unknown;
+  sellers?: unknown;
+}
+
 @Injectable({ providedIn: 'root' })
 export class SellerService {
   private readonly http = inject(HttpClient);
   private readonly apiRoot = ENV.apiUrl.replace(/\/api\/v1\/?$/, '');
-  private readonly candidates = [
-    `${this.apiRoot}/commercial/api/v1/sellers`,
-    `${this.apiRoot}/commercial/sellers`,
-    `${this.apiRoot}/api/v1/sellers`,
-    `${this.apiRoot}/sellers`
-  ];
+  private readonly baseUrl = `${this.apiRoot}/commercial/api/v1/sellers`;
 
   getSellers(): Observable<Seller[]> {
-    return this.tryEndpoint(0);
+    return this.http
+      .get<Seller[] | SellerApiResponse>(this.baseUrl)
+      .pipe(map(response => this.normalizeResponse(response)));
   }
 
-  private tryEndpoint(index: number): Observable<Seller[]> {
-    if (index >= this.candidates.length) {
-      return throwError(() => new Error('No seller endpoint available'));
+  private normalizeResponse(response: Seller[] | SellerApiResponse): Seller[] {
+    if (Array.isArray(response)) {
+      return response;
     }
 
-    return this.http.get<Seller[]>(this.candidates[index]).pipe(
-      catchError(() => this.tryEndpoint(index + 1))
-    );
+    if (response && Array.isArray(response.content)) {
+      return response.content as Seller[];
+    }
+
+    if (response && Array.isArray(response.data)) {
+      return response.data as Seller[];
+    }
+
+    if (response && Array.isArray(response.sellers)) {
+      return response.sellers as Seller[];
+    }
+
+    return [];
   }
 }
