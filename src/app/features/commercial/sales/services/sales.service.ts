@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import { ENV } from '@config/env.config';
 import {
   RecipePreparationTrace,
@@ -10,13 +10,20 @@ import {
   SaleStatus
 } from '@commercial/sales/models/sale.model';
 
+interface PagedSalesResponse {
+  content?: SaleResponse[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class SalesService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = `${ENV.apiUrl.replace('/api/v1', '')}/commercial/api/v1/sales`;
+  private readonly apiRoot = ENV.apiUrl.replace(/\/api\/v1\/?$/, '');
+  private readonly baseUrl = `${this.apiRoot}/commercial/api/v1/sales`;
 
   getSales(): Observable<SaleResponse[]> {
-    return this.http.get<SaleResponse[]>(this.baseUrl);
+    return this.http
+      .get<SaleResponse[] | PagedSalesResponse>(this.baseUrl)
+      .pipe(map(response => this.normalizeSalesResponse(response)));
   }
 
   getSaleById(id: string): Observable<SaleResponse> {
@@ -45,5 +52,17 @@ export class SalesService {
 
   getPreparationById(traceId: string): Observable<RecipePreparationTrace> {
     return this.http.get<RecipePreparationTrace>(`${this.baseUrl}/preparations/${traceId}`);
+  }
+
+  private normalizeSalesResponse(response: SaleResponse[] | PagedSalesResponse): SaleResponse[] {
+    if (Array.isArray(response)) {
+      return response;
+    }
+
+    if (response && Array.isArray(response.content)) {
+      return response.content;
+    }
+
+    return [];
   }
 }

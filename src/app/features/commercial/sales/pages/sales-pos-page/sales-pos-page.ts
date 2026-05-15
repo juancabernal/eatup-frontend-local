@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { interval, of, Subject, switchMap, takeUntil, catchError, tap } from 'rxjs';
 import { SalesService } from '@commercial/sales/services/sales.service';
+import { ENV } from '@config/env.config';
 import { RecipePreparationTrace, SaleRequest, SaleResponse, SaleStatus, SaleableItem } from '@commercial/sales/models/sale.model';
 
 interface CartLine { recipeId: string; name: string; quantity: number; unitPrice: number; recipeLineComment: string; }
@@ -24,7 +25,7 @@ export class SalesPosPage implements OnInit, OnDestroy {
   readonly currentCart = signal<CartLine[]>([]);
   readonly searchQuery = signal('');
   readonly selectedSellerId = signal('SELLER-TEST-001');
-  readonly selectedLocationId = signal('88888888-8888-8888-8888-888888888888');
+  readonly selectedLocationId = signal(ENV.locationId);
   readonly selectedTableId = signal('TABLE-1');
   readonly loading = signal(false);
   readonly submitting = signal(false);
@@ -65,7 +66,7 @@ export class SalesPosPage implements OnInit, OnDestroy {
   deleteSale(sale:SaleResponse):void{ if(sale.status==='COMPLETED'){this.pushToast('warning','No se puede eliminar una venta completada.');return;} if(!confirm('¿Eliminar esta venta?')) return; this.salesService.deleteSale(sale.id).subscribe({next:()=>{this.pushToast('warning','Eliminación solicitada. Se está procesando con inventario.');this.trackProcessing(sale.id,'delete');},error:e=>this.pushToast('error',this.readError(e))}); }
   refreshPreparations(saleId:string):void{ this.salesService.getSalePreparations(saleId).subscribe({next:t=>{this.preparationTracesBySaleId.update(s=>({...s,[saleId]:t})); if(t.some(x=>x.status==='REJECTED')) this.pushToast('warning','Una o más recetas fueron rechazadas por inventario.');},error:()=>{}}); }
 
-  private refreshSales(): void { this.loading.set(true); this.salesService.getSales().subscribe({next:(sales)=>{this.sales.set(sales); this.loading.set(false);},error:()=>{this.loading.set(false); this.pushToast('error','Error al cargar ventas.');}}); }
+  private refreshSales(): void { this.loading.set(true); this.salesService.getSales().subscribe({next:(sales)=>{this.sales.set(sales ?? []); this.loading.set(false);},error:(error)=>{this.loading.set(false); this.pushToast('error', this.readLoadSalesError(error));}}); }
   private loadSaleableItems(): void { this.saleableItems.set([{id:'dddddddd-dddd-dddd-dddd-dddddddddddd',name:'Receta Inactiva Prueba',price:6500,active:true,visibleInMenu:true,stock:99}]); }
 
   private buildPayload(): SaleRequest | null {
@@ -110,5 +111,13 @@ export class SalesPosPage implements OnInit, OnDestroy {
   tracesBySaleId(saleId:string): RecipePreparationTrace[] { return this.preparationTracesBySaleId()[saleId] ?? []; }
   private stopTracking(saleId:string):void{ this.processingSaleIds.update(ids=>ids.filter(id=>id!==saleId)); }
   private pushToast(type:'success'|'error'|'warning',message:string):void{ this.toastType.set(type); this.toastMessage.set(message); setTimeout(()=>this.toastMessage.set(''), 4500); }
+
+  private readLoadSalesError(error: unknown): string {
+    const err = error as HttpErrorResponse;
+    if (err.status === 0) return 'No se pudo conectar con el servidor.';
+    if (err.status === 401) return 'Sesión expirada. Inicia sesión nuevamente.';
+    return 'No se pudieron cargar las ventas.';
+  }
+
   private readError(error: unknown): string { const err=error as HttpErrorResponse; if(err.status===401) return 'Sesión expirada. Inicia sesión nuevamente.'; if(err.status===403) return 'No tienes permisos para realizar esta acción.'; if(err.status===404) return 'Venta no encontrada.'; if(err.status===0) return 'No se pudo conectar con el servidor.'; return err.error?.message ?? 'Ocurrió un error inesperado.'; }
 }
