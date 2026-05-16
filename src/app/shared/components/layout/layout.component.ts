@@ -217,6 +217,7 @@ export class LayoutComponent {
       expanded: false,
       features: [
         { name: 'Descuentos', path: '/commercial/discount' },
+        { name: 'Vendedores', path: '/commercial/seller' },
         { name: 'Mesas', path: '/commercial/tables' },
         { name: 'Ventas', path: '/commercial/sales' }
       ]
