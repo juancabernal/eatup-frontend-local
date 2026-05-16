@@ -37,7 +37,7 @@ import { CommonModule } from '@angular/common';
       <main class="content">
         <header class="top-bar">
           <div class="breadcrumb">
-            Dashboard / {{ currentFeature() }}
+            Dashboard
           </div>
           <div class="user-profile">
             <span>Admin</span>
