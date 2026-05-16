@@ -16,13 +16,28 @@ type ToastMessage = { id: string; type: ToastType; message: string; duration: nu
   templateUrl: './sales-page.component.html', styleUrl: './sales-page.component.css', changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class SalesPageComponent implements OnInit {
-  recipes: RecipeResponse[] = []; sales: SaleResponse[] = []; cartItems: CartItem[] = []; tracesBySaleId: Record<string, RecipePreparationTrace[]> = {};
-  sellers: Seller[] = []; tables: RestaurantTable[] = []; recipeQuery = ''; sellerQuery = ''; tableQuery = '';
+  recipes: RecipeResponse[] = []; sales: SaleResponse[] = []; filteredSales: SaleResponse[] = []; cartItems: CartItem[] = []; tracesBySaleId: Record<string, RecipePreparationTrace[]> = {};
+  sellers: Seller[] = []; tables: RestaurantTable[] = []; sellerQuery = ''; tableQuery = '';
+
+  recipeSearchTerm = '';
+  recipeStatusFilter: 'ALL' | 'ACTIVE' | 'INACTIVE' = 'ALL';
+  recipeVisibilityFilter: 'ALL' | 'VISIBLE' | 'HIDDEN' = 'ALL';
+  recipeMinPrice: number | null = null;
+  recipeMaxPrice: number | null = null;
+  recipeSort: 'NAME_ASC' | 'NAME_DESC' | 'PRICE_ASC' | 'PRICE_DESC' = 'NAME_ASC';
+
+  saleSearchTerm = '';
+  saleStatusFilter: 'ALL' | SaleStatus = 'ALL';
+  saleDateFrom: string | null = null;
+  saleDateTo: string | null = null;
+  saleMinTotal: number | null = null;
+  saleMaxTotal: number | null = null;
   selectedSellerId = ''; selectedSellerName = ''; selectedTableId = ''; selectedTableName = '';
   showCommentModal = false; showSellerModal = false; showTableModal = false; showDeleteModal = false;
   showTraceModal = false; traceLoading = false; selectedTraceSaleId = '';
   selectedCartRecipeId = ''; modalComment = 'Sin observaciones'; deletingSaleId = ''; loading = false;
   toasts: ToastMessage[] = [];
+  isCreatingSale = false;
   salesPage = 1; salesPageSize = 5; salesPageSizeOptions = [5, 10, 20];
   private salesPollingStarted = false;
   private salesInitialLoadCompleted = false;
@@ -40,16 +55,16 @@ export class SalesPageComponent implements OnInit {
         next: ([r, s, se, t]) => {
           this.recipes = [...r];
           this.sales = this.normalizeAndSortSales(s);
+          this.applySaleFilters(false);
           this.sellers = [...se];
           this.tables = [...t];
-          this.ensureValidSalesPage();
           if (!this.salesPollingStarted) this.startSalesPolling();
         },
         error: () => this.showToast('error', 'No se pudieron cargar los datos de ventas.')
       });
   }
 
-  get filteredRecipes() { return this.recipes.filter(r => r.name?.toLowerCase().includes(this.recipeQuery.toLowerCase())); }
+  get filteredRecipes() { return this.getFilteredRecipes(); }
   get filteredSellers() { return this.sellers.filter(s => this.sellerDisplayName(s).toLowerCase().includes(this.sellerQuery.toLowerCase()) || (s.document ?? '').toLowerCase().includes(this.sellerQuery.toLowerCase())); }
   get filteredTables() { return this.tables.filter(t => this.tableDisplayName(t).toLowerCase().includes(this.tableQuery.toLowerCase())); }
 
@@ -66,6 +81,7 @@ export class SalesPageComponent implements OnInit {
   get total() { return this.cartItems.reduce((a, b) => a + b.quantity * b.unitPrice, 0); }
 
   completeSale() {
+    if (this.isCreatingSale) return;
     if (!this.selectedSellerId) return this.showToast('error', 'Debes seleccionar un vendedor.');
     if (!this.selectedTableId) return this.showToast('error', 'Debes seleccionar una mesa disponible.');
     if (!this.cartItems.length) return this.showToast('error', 'Agrega al menos una receta a la venta.');
@@ -73,27 +89,33 @@ export class SalesPageComponent implements OnInit {
     if (this.cartItems.some(i => !i.recipeId || i.quantity <= 0 || i.unitPrice <= 0)) return this.showToast('error', 'La cantidad debe ser mayor que cero.');
 
     const payload = { sellerId: this.selectedSellerId, locationId: (window as any).ENV?.LOCATION_ID || 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', tableId: this.selectedTableId, details: this.cartItems.map(i => ({ recipeId: i.recipeId, quantity: i.quantity, unitPrice: i.unitPrice, recipeLineComment: i.recipeLineComment?.trim() || 'Sin observaciones', lineDisplayName: i.lineDisplayName || i.recipeName })) };
-    this.salesService.createSale(payload).subscribe({
-      next: (res) => {
-        this.showToast('success', 'Venta recibida. Se está procesando con inventario.');
-        this.cartItems = []; this.cdr.markForCheck(); this.refreshSales();
-        if (res.saleId) interval(2500).pipe(take(4), switchMap(() => this.salesService.getSaleById(res.saleId))).subscribe({ next: () => this.refreshSales(), error: () => {} });
-      },
-      error: () => this.showToast('error', 'No se pudo crear la venta.')
-    });
+    this.isCreatingSale = true;
+    this.cdr.markForCheck();
+    this.salesService.createSale(payload)
+      .pipe(finalize(() => { this.isCreatingSale = false; this.cdr.markForCheck(); }))
+      .subscribe({
+        next: (res) => {
+          const message = res?.message || 'Venta enviada a procesamiento correctamente.';
+          this.showToast('success', message);
+          this.clearCurrentOrder();
+          this.refreshSales(true);
+          if (res?.saleId) interval(2500).pipe(take(4), switchMap(() => this.salesService.getSaleById(res.saleId))).subscribe({ next: () => this.refreshSales(true), error: () => {} });
+        },
+        error: () => this.showToast('error', 'No se pudo crear la venta.')
+      });
   }
 
-  get totalSalesPages() { return Math.max(1, Math.ceil(this.sales.length / this.salesPageSize)); }
-  get paginatedSales() { const start = (this.salesPage - 1) * this.salesPageSize; return this.sales.slice(start, start + this.salesPageSize); }
-  get salesRangeStart() { return this.sales.length ? (this.salesPage - 1) * this.salesPageSize + 1 : 0; }
-  get salesRangeEnd() { return Math.min(this.salesPage * this.salesPageSize, this.sales.length); }
+  get totalSalesPages() { return Math.max(1, Math.ceil(this.filteredSales.length / this.salesPageSize)); }
+  get paginatedSales() { const start = (this.salesPage - 1) * this.salesPageSize; return this.filteredSales.slice(start, start + this.salesPageSize); }
+  get salesRangeStart() { return this.filteredSales.length ? (this.salesPage - 1) * this.salesPageSize + 1 : 0; }
+  get salesRangeEnd() { return Math.min(this.salesPage * this.salesPageSize, this.filteredSales.length); }
   changeSalesPageSize(size: number) { this.salesPageSize = Number(size); this.salesPage = 1; this.ensureValidSalesPage(); this.cdr.markForCheck(); }
   prevSalesPage() { if (this.salesPage > 1) { this.salesPage -= 1; this.cdr.markForCheck(); } }
   nextSalesPage() { if (this.salesPage < this.totalSalesPages) { this.salesPage += 1; this.cdr.markForCheck(); } }
 
   refreshSales(silent = false) {
     this.salesService.getSales().subscribe({
-      next: s => { this.sales = this.normalizeAndSortSales(s); this.ensureValidSalesPage(); this.cdr.markForCheck(); },
+      next: s => { this.sales = this.normalizeAndSortSales(s); this.applySaleFilters(false); this.cdr.markForCheck(); },
       error: () => { if (!silent) this.showToast('error', 'No se pudieron refrescar las ventas.'); }
     });
   }
@@ -139,16 +161,94 @@ export class SalesPageComponent implements OnInit {
   activeTraceSaleLabel() { return this.selectedTraceSaleId ? this.saleLabel(this.selectedTraceSaleId) : ''; }
   activeTraceItems() { return this.selectedTraceSaleId ? (this.tracesBySaleId[this.selectedTraceSaleId] ?? []) : []; }
   commentRecipeName() { return this.cartItems.find(i => i.recipeId === this.selectedCartRecipeId)?.recipeName || 'receta'; }
-  showToast(type: ToastType, message: string) {
-    const toast: ToastMessage = { id: crypto.randomUUID(), type, message, duration: 4500 };
+  showToast(type: ToastType, message: string, duration = 4500) {
+    const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+    const toast: ToastMessage = { id, type, message, duration };
     this.toasts = [...this.toasts, toast];
     window.setTimeout(() => this.removeToast(toast.id), toast.duration);
     this.cdr.markForCheck();
   }
 
+  trackByToastId(_: number, toast: ToastMessage) { return toast.id; }
+
   removeToast(id: string) {
     this.toasts = this.toasts.filter(t => t.id !== id);
     this.cdr.markForCheck();
+  }
+
+
+  applyRecipeFilters() { this.cdr.markForCheck(); }
+
+  clearRecipeFilters() {
+    this.recipeSearchTerm = '';
+    this.recipeStatusFilter = 'ALL';
+    this.recipeVisibilityFilter = 'ALL';
+    this.recipeMinPrice = null;
+    this.recipeMaxPrice = null;
+    this.recipeSort = 'NAME_ASC';
+    this.cdr.markForCheck();
+  }
+
+  applySaleFilters(resetPage = true) {
+    const term = this.saleSearchTerm.trim().toLowerCase();
+    const fromDate = this.saleDateFrom ? new Date(`${this.saleDateFrom}T00:00:00`).getTime() : null;
+    const toDate = this.saleDateTo ? new Date(`${this.saleDateTo}T23:59:59.999`).getTime() : null;
+    this.filteredSales = this.sales.filter(sale => {
+      const saleCode = this.saleLabel(sale.id).replace('#', '').toLowerCase();
+      const saleDate = new Date(sale.createdDate || sale.modifiedDate || 0).getTime();
+      const total = sale.totalAmount || 0;
+      if (term && !saleCode.includes(term)) return false;
+      if (this.saleStatusFilter !== 'ALL' && sale.status !== this.saleStatusFilter) return false;
+      if (fromDate && saleDate < fromDate) return false;
+      if (toDate && saleDate > toDate) return false;
+      if (this.saleMinTotal !== null && total < this.saleMinTotal) return false;
+      if (this.saleMaxTotal !== null && total > this.saleMaxTotal) return false;
+      return true;
+    });
+    if (resetPage) this.salesPage = 1;
+    this.ensureValidSalesPage();
+    this.cdr.markForCheck();
+  }
+
+  clearSaleFilters() {
+    this.saleSearchTerm = '';
+    this.saleStatusFilter = 'ALL';
+    this.saleDateFrom = null;
+    this.saleDateTo = null;
+    this.saleMinTotal = null;
+    this.saleMaxTotal = null;
+    this.applySaleFilters();
+  }
+
+
+  private clearCurrentOrder() {
+    this.cartItems = [];
+    this.selectedCartRecipeId = '';
+    this.modalComment = 'Sin observaciones';
+    this.cdr.markForCheck();
+  }
+
+  private getFilteredRecipes() {
+    const term = this.recipeSearchTerm.trim().toLowerCase();
+    const minPrice = this.recipeMinPrice ?? null;
+    const maxPrice = this.recipeMaxPrice ?? null;
+    return [...this.recipes].filter(recipe => {
+      const name = (recipe.name || '').toLowerCase();
+      const price = recipe.sellingPrice || 0;
+      if (term && !name.includes(term)) return false;
+      if (this.recipeStatusFilter === 'ACTIVE' && !recipe.active) return false;
+      if (this.recipeStatusFilter === 'INACTIVE' && recipe.active) return false;
+      if (this.recipeVisibilityFilter === 'VISIBLE' && !recipe.visibleInMenu) return false;
+      if (this.recipeVisibilityFilter === 'HIDDEN' && recipe.visibleInMenu) return false;
+      if (minPrice !== null && price < minPrice) return false;
+      if (maxPrice !== null && price > maxPrice) return false;
+      return true;
+    }).sort((a, b) => {
+      if (this.recipeSort === 'NAME_DESC') return (b.name || '').localeCompare(a.name || '');
+      if (this.recipeSort === 'PRICE_ASC') return (a.sellingPrice || 0) - (b.sellingPrice || 0);
+      if (this.recipeSort === 'PRICE_DESC') return (b.sellingPrice || 0) - (a.sellingPrice || 0);
+      return (a.name || '').localeCompare(b.name || '');
+    });
   }
 
   private normalizeAndSortSales(sales: SaleResponse[]) {
@@ -180,7 +280,7 @@ export class SalesPageComponent implements OnInit {
       ))
     ).subscribe(s => {
       this.sales = this.normalizeAndSortSales(s);
-      this.ensureValidSalesPage();
+      this.applySaleFilters(false);
       this.salesInitialLoadCompleted = true;
       this.cdr.markForCheck();
     });

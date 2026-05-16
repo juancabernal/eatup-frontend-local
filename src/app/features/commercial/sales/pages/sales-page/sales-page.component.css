@@ -15,3 +15,280 @@
 @media (max-width:640px){.actions{gap:.35rem}.btn{font-size:.86rem;padding:.46rem .58rem}.toasts-wrap{left:12px;right:12px;max-width:none}}
 
 .selector-btn{width:100%;display:flex;align-items:center;justify-content:flex-start;background:#fff;border:1px solid #cbd5e1;border-radius:14px;padding:.72rem .85rem;color:#0f172a;font-weight:600;cursor:pointer;transition:border-color .18s ease,box-shadow .18s ease,background-color .18s ease,transform .18s ease}.selector-btn:hover{border-color:#fdba74;background:#fff7ed}.selector-btn:focus-visible{outline:none;border-color:#f97316;box-shadow:0 0 0 4px rgba(249,115,22,.14)}.selector-btn:active{transform:scale(.98)}
+
+.filters-card{background:#f8fffe;border:1px solid #cfe8e5;border-radius:14px;padding:.75rem;margin:.55rem 0 .75rem}
+.filters-grid{display:grid;gap:.55rem;align-items:end}
+.recipe-filters-grid{grid-template-columns:repeat(5,minmax(0,1fr))}
+.recipe-filters-grid .filter-field-full{grid-column:1/-1}
+.sales-filters-grid{grid-template-columns:repeat(7,minmax(0,1fr))}
+.filter-field{display:flex;flex-direction:column;gap:.25rem;min-width:0}
+.filter-label{font-size:.78rem;color:#0f766e;font-weight:600}
+.filter-input,.filter-select{width:100%;border:1px solid #bcdad6;background:#fff;border-radius:10px;padding:.5rem .65rem;outline:none;transition:border-color .2s, box-shadow .2s}
+.filter-input:focus,.filter-select:focus{border-color:#0f766e;box-shadow:0 0 0 3px rgba(15,118,110,.15)}
+.clear-filters-btn{border:1px solid #0f766e;background:#ecfdf5;color:#0f766e;border-radius:10px;padding:.5rem .7rem;font-weight:700;cursor:pointer;min-height:40px}
+.clear-filters-btn:hover{background:#d1fae5}
+.empty-state{padding:.9rem;border:1px dashed #99d4cc;background:#f0fdfa;border-radius:12px;color:#0f766e;text-align:center;font-weight:600}
+.catalog-panel .recipe-grid{align-items:start}
+.recipe-card{min-height:260px;max-height:320px}
+.badges{align-items:center}
+
+@media (max-width:1200px){.recipe-filters-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.sales-filters-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:720px){.recipe-filters-grid,.sales-filters-grid{grid-template-columns:1fr}.clear-filters-btn{width:100%}}
+
+/* =========================================================
+   PALETA FINAL - SALES MODULE
+   Reemplazo de naranjas/cafés por verde petróleo elegante
+   Mantiene estructura actual y sólo cambia colores/acento
+   ========================================================= */
+
+:host {
+  --accent: #0f766e;
+  --accent-hover: #0d5f59;
+  --accent-soft: #f0fdfa;
+  --accent-soft-strong: #ccfbf1;
+  --accent-border: #99f6e4;
+  --accent-text: #115e59;
+  --focus-ring: rgba(15, 118, 110, 0.16);
+
+  --danger-soft: #fff1f2;
+  --danger-border: #fecdd3;
+  --danger-text: #be123c;
+  --danger-hover: #ffe4e6;
+
+  --comment-soft: #f5f3ff;
+  --comment-border: #ddd6fe;
+  --comment-text: #6d28d9;
+  --comment-hover: #ede9fe;
+
+  --neutral-hover: #f8fafc;
+}
+
+/* Si también quieres quitar el fondo beige general, activa este bloque.
+   Si te gusta el fondo actual, bórralo o déjalo comentado. */
+.sales-page {
+  background: linear-gradient(180deg, #f8fafc, #f1f5f9);
+}
+
+/* Focus de inputs principales */
+.input:focus,
+.quantity-input:focus-visible,
+.selector-btn:focus-visible,
+.filter-input:focus,
+.filter-select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+/* Botón principal: Agregar / Completar venta */
+.btn-primary {
+  background: var(--accent);
+  color: #ffffff;
+  box-shadow: 0 10px 22px rgba(15, 118, 110, 0.18);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  box-shadow: 0 14px 28px rgba(15, 118, 110, 0.24);
+}
+
+/* Botón suave: Ver trazabilidad / acciones destacadas */
+.btn-soft {
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+  color: var(--accent-text);
+}
+
+.btn-soft:hover:not(:disabled) {
+  background: var(--accent-soft-strong);
+  border-color: var(--accent);
+  color: var(--accent-hover);
+}
+
+/* Selectores de vendedor y mesa */
+.selector-btn:hover:not(:disabled) {
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
+  color: var(--accent-text);
+}
+
+/* Opciones de modales */
+.pick:hover {
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
+}
+
+/* Botón comentario */
+.btn-comment {
+  background: var(--comment-soft);
+  border: 1px solid var(--comment-border);
+  color: var(--comment-text);
+}
+
+.btn-comment:hover:not(:disabled) {
+  background: var(--comment-hover);
+  border-color: #c4b5fd;
+  color: #5b21b6;
+}
+
+/* Botón eliminar */
+.btn-danger {
+  background: var(--danger-soft);
+  border: 1px solid var(--danger-border);
+  color: var(--danger-text);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: var(--danger-hover);
+  border-color: #fda4af;
+  color: #9f1239;
+}
+
+/* Focus general de botones */
+.btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+/* Tabla ventas recientes */
+.sales-table tbody tr:hover {
+  background: var(--neutral-hover);
+}
+
+.sales-table tbody tr.active,
+.sales-table tbody tr.selected,
+.sales-table tbody tr.is-highlighted {
+  background: var(--accent-soft);
+}
+
+/* Badge warning: quitar café/naranja */
+.badge.warn {
+  background: var(--accent-soft-strong);
+  color: var(--accent-text);
+  border-color: var(--accent-border);
+}
+
+/* Filtros de recetas y ventas */
+.filters-card {
+  background: #f8fafc;
+  border: 1px solid #dbe3ef;
+}
+
+.filter-label {
+  color: var(--accent-text);
+}
+
+.filter-input,
+.filter-select {
+  border-color: #cbd5e1;
+  background: #ffffff;
+  color: #0f172a;
+}
+
+.filter-input:hover,
+.filter-select:hover {
+  border-color: var(--accent-border);
+}
+
+/* Botón limpiar filtros */
+.clear-filters-btn {
+  border: 1px solid var(--accent-border);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.clear-filters-btn:hover {
+  background: var(--accent-soft-strong);
+  border-color: var(--accent);
+  color: var(--accent-hover);
+}
+
+/* Empty state */
+.empty-state {
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+/* Quitar naranjas restantes en selector */
+.selector-btn:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
+}
+
+.selector-btn:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--focus-ring);
+}
+
+/* Quitar naranjas restantes en input cantidad */
+.quantity-input:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--focus-ring);
+}
+
+/* Quitar naranjas restantes en input común */
+.input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+/* Quitar naranja/café de opciones */
+.pick:hover {
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
+}
+
+/* =========================================================
+   Disabled buttons: nunca cambiar color en hover
+   ========================================================= */
+
+.btn:disabled,
+.btn:disabled:hover,
+.btn:disabled:active,
+.btn-primary:disabled,
+.btn-primary:disabled:hover,
+.btn-primary:disabled:active {
+  background: #94c9c2;
+  color: #ffffff;
+  border-color: transparent;
+  opacity: 0.75;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn-soft:disabled,
+.btn-soft:disabled:hover,
+.btn-soft:disabled:active {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+  color: #94a3b8;
+  opacity: 0.85;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn-comment:disabled,
+.btn-comment:disabled:hover,
+.btn-comment:disabled:active {
+  background: #ede9fe;
+  border-color: #ddd6fe;
+  color: #a78bfa;
+  opacity: 0.75;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn-danger:disabled,
+.btn-danger:disabled:hover,
+.btn-danger:disabled:active {
+  background: #fee2e2;
+  border-color: #fecaca;
+  color: #f87171;
+  opacity: 0.75;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
