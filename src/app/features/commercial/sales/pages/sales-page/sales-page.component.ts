@@ -37,6 +37,7 @@ export class SalesPageComponent implements OnInit {
   showTraceModal = false; traceLoading = false; selectedTraceSaleId = '';
   selectedCartRecipeId = ''; modalComment = 'Sin observaciones'; deletingSaleId = ''; loading = false;
   toasts: ToastMessage[] = [];
+  isCreatingSale = false;
   salesPage = 1; salesPageSize = 5; salesPageSizeOptions = [5, 10, 20];
   private salesPollingStarted = false;
   private salesInitialLoadCompleted = false;
@@ -80,6 +81,7 @@ export class SalesPageComponent implements OnInit {
   get total() { return this.cartItems.reduce((a, b) => a + b.quantity * b.unitPrice, 0); }
 
   completeSale() {
+    if (this.isCreatingSale) return;
     if (!this.selectedSellerId) return this.showToast('error', 'Debes seleccionar un vendedor.');
     if (!this.selectedTableId) return this.showToast('error', 'Debes seleccionar una mesa disponible.');
     if (!this.cartItems.length) return this.showToast('error', 'Agrega al menos una receta a la venta.');
@@ -87,14 +89,20 @@ export class SalesPageComponent implements OnInit {
     if (this.cartItems.some(i => !i.recipeId || i.quantity <= 0 || i.unitPrice <= 0)) return this.showToast('error', 'La cantidad debe ser mayor que cero.');
 
     const payload = { sellerId: this.selectedSellerId, locationId: (window as any).ENV?.LOCATION_ID || 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', tableId: this.selectedTableId, details: this.cartItems.map(i => ({ recipeId: i.recipeId, quantity: i.quantity, unitPrice: i.unitPrice, recipeLineComment: i.recipeLineComment?.trim() || 'Sin observaciones', lineDisplayName: i.lineDisplayName || i.recipeName })) };
-    this.salesService.createSale(payload).subscribe({
-      next: (res) => {
-        this.showToast('success', 'Venta recibida. Se está procesando con inventario.');
-        this.cartItems = []; this.cdr.markForCheck(); this.refreshSales();
-        if (res.saleId) interval(2500).pipe(take(4), switchMap(() => this.salesService.getSaleById(res.saleId))).subscribe({ next: () => this.refreshSales(), error: () => {} });
-      },
-      error: () => this.showToast('error', 'No se pudo crear la venta.')
-    });
+    this.isCreatingSale = true;
+    this.cdr.markForCheck();
+    this.salesService.createSale(payload)
+      .pipe(finalize(() => { this.isCreatingSale = false; this.cdr.markForCheck(); }))
+      .subscribe({
+        next: (res) => {
+          const message = res?.message || 'Venta enviada a procesamiento correctamente.';
+          this.showToast('success', message);
+          this.clearCurrentOrder();
+          this.refreshSales(true);
+          if (res?.saleId) interval(2500).pipe(take(4), switchMap(() => this.salesService.getSaleById(res.saleId))).subscribe({ next: () => this.refreshSales(true), error: () => {} });
+        },
+        error: () => this.showToast('error', 'No se pudo crear la venta.')
+      });
   }
 
   get totalSalesPages() { return Math.max(1, Math.ceil(this.filteredSales.length / this.salesPageSize)); }
@@ -153,12 +161,15 @@ export class SalesPageComponent implements OnInit {
   activeTraceSaleLabel() { return this.selectedTraceSaleId ? this.saleLabel(this.selectedTraceSaleId) : ''; }
   activeTraceItems() { return this.selectedTraceSaleId ? (this.tracesBySaleId[this.selectedTraceSaleId] ?? []) : []; }
   commentRecipeName() { return this.cartItems.find(i => i.recipeId === this.selectedCartRecipeId)?.recipeName || 'receta'; }
-  showToast(type: ToastType, message: string) {
-    const toast: ToastMessage = { id: crypto.randomUUID(), type, message, duration: 4500 };
+  showToast(type: ToastType, message: string, duration = 4500) {
+    const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+    const toast: ToastMessage = { id, type, message, duration };
     this.toasts = [...this.toasts, toast];
     window.setTimeout(() => this.removeToast(toast.id), toast.duration);
     this.cdr.markForCheck();
   }
+
+  trackByToastId(_: number, toast: ToastMessage) { return toast.id; }
 
   removeToast(id: string) {
     this.toasts = this.toasts.filter(t => t.id !== id);
@@ -207,6 +218,14 @@ export class SalesPageComponent implements OnInit {
     this.saleMinTotal = null;
     this.saleMaxTotal = null;
     this.applySaleFilters();
+  }
+
+
+  private clearCurrentOrder() {
+    this.cartItems = [];
+    this.selectedCartRecipeId = '';
+    this.modalComment = 'Sin observaciones';
+    this.cdr.markForCheck();
   }
 
   private getFilteredRecipes() {

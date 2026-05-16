@@ -49,7 +49,7 @@
           </div>
         }
       </div>
-      <footer class="order-footer"><div><p>Subtotal</p><strong>{{ total | currency:'COP':'symbol':'1.0-0' }}</strong></div><div><p>Total</p><strong>{{ total | currency:'COP':'symbol':'1.0-0' }}</strong></div><button class="btn btn-primary" (click)="completeSale()">Completar venta</button></footer>
+      <footer class="order-footer"><div><p>Subtotal</p><strong>{{ total | currency:'COP':'symbol':'1.0-0' }}</strong></div><div><p>Total</p><strong>{{ total | currency:'COP':'symbol':'1.0-0' }}</strong></div><button class="btn btn-primary" type="button" [disabled]="isCreatingSale || cartItems.length === 0" (click)="completeSale()">{{ isCreatingSale ? 'Procesando...' : 'Completar venta' }}</button></footer>
     </article>
   </section>
 
@@ -110,7 +110,7 @@
 @if(showTraceModal){<div class="modal"><div class="modal-card trace-modal"><button class="x" (click)="closeTraceModal()">✕</button><h3>Trazabilidad de la venta {{ activeTraceSaleLabel() }}</h3><p class="muted">Consulta el resultado del procesamiento de inventario por receta.</p>@if(traceLoading){<p class="muted">Cargando trazabilidad...</p>}@else if(!activeTraceItems().length){<p class="muted">No hay trazabilidad registrada para esta venta.</p>}@else{<div class="trace-list">@for(t of activeTraceItems();track t.id){<article class="trace-item"><div class="trace-item-head"><strong>{{ traceRecipeName(t) }}</strong><span class="badge" [class.ok]="t.status==='ACCEPTED'" [class.error]="t.status==='REJECTED'">{{ traceStatusLabel(t.status) }}</span></div><p class="muted">{{ t.observation || 'Sin observación' }}</p>@if(t.createdDate){<small class="muted">{{ t.createdDate | date:'dd/MM/yyyy HH:mm' }}</small>}</article>}</div>}<div class="modal-actions"><button class="btn btn-ghost" (click)="closeTraceModal()">Cerrar</button></div></div></div>}
 
 <div class="toasts-wrap">
-  @for (toast of toasts; track toast.id) {
+  @for (toast of toasts; track trackByToastId($index, toast)) {
     <div class="toast" [class.success]="toast.type==='success'" [class.error]="toast.type==='error'">
       <button class="x toast-close" type="button" (click)="removeToast(toast.id)">✕</button>
       <p>{{ toast.message }}</p>
