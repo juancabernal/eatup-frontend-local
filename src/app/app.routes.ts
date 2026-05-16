@@ -69,6 +69,14 @@ export const routes: Routes = [
             m => m.TABLES_ROUTES
           )
       }
+,
+      {
+        path: 'inventory/transfer',
+        loadChildren: () =>
+          import('./features/inventory/transfer/transfer.routes').then(
+            m => m.TRANSFER_ROUTES
+          )
+      }
     ]
   },
   {
