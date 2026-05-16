@@ -16,8 +16,22 @@ type ToastMessage = { id: string; type: ToastType; message: string; duration: nu
   templateUrl: './sales-page.component.html', styleUrl: './sales-page.component.css', changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class SalesPageComponent implements OnInit {
-  recipes: RecipeResponse[] = []; sales: SaleResponse[] = []; cartItems: CartItem[] = []; tracesBySaleId: Record<string, RecipePreparationTrace[]> = {};
-  sellers: Seller[] = []; tables: RestaurantTable[] = []; recipeQuery = ''; sellerQuery = ''; tableQuery = '';
+  recipes: RecipeResponse[] = []; sales: SaleResponse[] = []; filteredSales: SaleResponse[] = []; cartItems: CartItem[] = []; tracesBySaleId: Record<string, RecipePreparationTrace[]> = {};
+  sellers: Seller[] = []; tables: RestaurantTable[] = []; sellerQuery = ''; tableQuery = '';
+
+  recipeSearchTerm = '';
+  recipeStatusFilter: 'ALL' | 'ACTIVE' | 'INACTIVE' = 'ALL';
+  recipeVisibilityFilter: 'ALL' | 'VISIBLE' | 'HIDDEN' = 'ALL';
+  recipeMinPrice: number | null = null;
+  recipeMaxPrice: number | null = null;
+  recipeSort: 'NAME_ASC' | 'NAME_DESC' | 'PRICE_ASC' | 'PRICE_DESC' = 'NAME_ASC';
+
+  saleSearchTerm = '';
+  saleStatusFilter: 'ALL' | SaleStatus = 'ALL';
+  saleDateFrom: string | null = null;
+  saleDateTo: string | null = null;
+  saleMinTotal: number | null = null;
+  saleMaxTotal: number | null = null;
   selectedSellerId = ''; selectedSellerName = ''; selectedTableId = ''; selectedTableName = '';
   showCommentModal = false; showSellerModal = false; showTableModal = false; showDeleteModal = false;
   showTraceModal = false; traceLoading = false; selectedTraceSaleId = '';
@@ -40,16 +54,16 @@ export class SalesPageComponent implements OnInit {
         next: ([r, s, se, t]) => {
           this.recipes = [...r];
           this.sales = this.normalizeAndSortSales(s);
+          this.applySaleFilters(false);
           this.sellers = [...se];
           this.tables = [...t];
-          this.ensureValidSalesPage();
           if (!this.salesPollingStarted) this.startSalesPolling();
         },
         error: () => this.showToast('error', 'No se pudieron cargar los datos de ventas.')
       });
   }
 
-  get filteredRecipes() { return this.recipes.filter(r => r.name?.toLowerCase().includes(this.recipeQuery.toLowerCase())); }
+  get filteredRecipes() { return this.getFilteredRecipes(); }
   get filteredSellers() { return this.sellers.filter(s => this.sellerDisplayName(s).toLowerCase().includes(this.sellerQuery.toLowerCase()) || (s.document ?? '').toLowerCase().includes(this.sellerQuery.toLowerCase())); }
   get filteredTables() { return this.tables.filter(t => this.tableDisplayName(t).toLowerCase().includes(this.tableQuery.toLowerCase())); }
 
@@ -83,17 +97,17 @@ export class SalesPageComponent implements OnInit {
     });
   }
 
-  get totalSalesPages() { return Math.max(1, Math.ceil(this.sales.length / this.salesPageSize)); }
-  get paginatedSales() { const start = (this.salesPage - 1) * this.salesPageSize; return this.sales.slice(start, start + this.salesPageSize); }
-  get salesRangeStart() { return this.sales.length ? (this.salesPage - 1) * this.salesPageSize + 1 : 0; }
-  get salesRangeEnd() { return Math.min(this.salesPage * this.salesPageSize, this.sales.length); }
+  get totalSalesPages() { return Math.max(1, Math.ceil(this.filteredSales.length / this.salesPageSize)); }
+  get paginatedSales() { const start = (this.salesPage - 1) * this.salesPageSize; return this.filteredSales.slice(start, start + this.salesPageSize); }
+  get salesRangeStart() { return this.filteredSales.length ? (this.salesPage - 1) * this.salesPageSize + 1 : 0; }
+  get salesRangeEnd() { return Math.min(this.salesPage * this.salesPageSize, this.filteredSales.length); }
   changeSalesPageSize(size: number) { this.salesPageSize = Number(size); this.salesPage = 1; this.ensureValidSalesPage(); this.cdr.markForCheck(); }
   prevSalesPage() { if (this.salesPage > 1) { this.salesPage -= 1; this.cdr.markForCheck(); } }
   nextSalesPage() { if (this.salesPage < this.totalSalesPages) { this.salesPage += 1; this.cdr.markForCheck(); } }
 
   refreshSales(silent = false) {
     this.salesService.getSales().subscribe({
-      next: s => { this.sales = this.normalizeAndSortSales(s); this.ensureValidSalesPage(); this.cdr.markForCheck(); },
+      next: s => { this.sales = this.normalizeAndSortSales(s); this.applySaleFilters(false); this.cdr.markForCheck(); },
       error: () => { if (!silent) this.showToast('error', 'No se pudieron refrescar las ventas.'); }
     });
   }
@@ -151,6 +165,73 @@ export class SalesPageComponent implements OnInit {
     this.cdr.markForCheck();
   }
 
+
+  applyRecipeFilters() { this.cdr.markForCheck(); }
+
+  clearRecipeFilters() {
+    this.recipeSearchTerm = '';
+    this.recipeStatusFilter = 'ALL';
+    this.recipeVisibilityFilter = 'ALL';
+    this.recipeMinPrice = null;
+    this.recipeMaxPrice = null;
+    this.recipeSort = 'NAME_ASC';
+    this.cdr.markForCheck();
+  }
+
+  applySaleFilters(resetPage = true) {
+    const term = this.saleSearchTerm.trim().toLowerCase();
+    const fromDate = this.saleDateFrom ? new Date(`${this.saleDateFrom}T00:00:00`).getTime() : null;
+    const toDate = this.saleDateTo ? new Date(`${this.saleDateTo}T23:59:59.999`).getTime() : null;
+    this.filteredSales = this.sales.filter(sale => {
+      const saleCode = this.saleLabel(sale.id).replace('#', '').toLowerCase();
+      const saleDate = new Date(sale.createdDate || sale.modifiedDate || 0).getTime();
+      const total = sale.totalAmount || 0;
+      if (term && !saleCode.includes(term)) return false;
+      if (this.saleStatusFilter !== 'ALL' && sale.status !== this.saleStatusFilter) return false;
+      if (fromDate && saleDate < fromDate) return false;
+      if (toDate && saleDate > toDate) return false;
+      if (this.saleMinTotal !== null && total < this.saleMinTotal) return false;
+      if (this.saleMaxTotal !== null && total > this.saleMaxTotal) return false;
+      return true;
+    });
+    if (resetPage) this.salesPage = 1;
+    this.ensureValidSalesPage();
+    this.cdr.markForCheck();
+  }
+
+  clearSaleFilters() {
+    this.saleSearchTerm = '';
+    this.saleStatusFilter = 'ALL';
+    this.saleDateFrom = null;
+    this.saleDateTo = null;
+    this.saleMinTotal = null;
+    this.saleMaxTotal = null;
+    this.applySaleFilters();
+  }
+
+  private getFilteredRecipes() {
+    const term = this.recipeSearchTerm.trim().toLowerCase();
+    const minPrice = this.recipeMinPrice ?? null;
+    const maxPrice = this.recipeMaxPrice ?? null;
+    return [...this.recipes].filter(recipe => {
+      const name = (recipe.name || '').toLowerCase();
+      const price = recipe.sellingPrice || 0;
+      if (term && !name.includes(term)) return false;
+      if (this.recipeStatusFilter === 'ACTIVE' && !recipe.active) return false;
+      if (this.recipeStatusFilter === 'INACTIVE' && recipe.active) return false;
+      if (this.recipeVisibilityFilter === 'VISIBLE' && !recipe.visibleInMenu) return false;
+      if (this.recipeVisibilityFilter === 'HIDDEN' && recipe.visibleInMenu) return false;
+      if (minPrice !== null && price < minPrice) return false;
+      if (maxPrice !== null && price > maxPrice) return false;
+      return true;
+    }).sort((a, b) => {
+      if (this.recipeSort === 'NAME_DESC') return (b.name || '').localeCompare(a.name || '');
+      if (this.recipeSort === 'PRICE_ASC') return (a.sellingPrice || 0) - (b.sellingPrice || 0);
+      if (this.recipeSort === 'PRICE_DESC') return (b.sellingPrice || 0) - (a.sellingPrice || 0);
+      return (a.name || '').localeCompare(b.name || '');
+    });
+  }
+
   private normalizeAndSortSales(sales: SaleResponse[]) {
     return [...sales].sort((a, b) => {
       const dA = new Date(a.modifiedDate || a.createdDate || 0).getTime();
@@ -180,7 +261,7 @@ export class SalesPageComponent implements OnInit {
       ))
     ).subscribe(s => {
       this.sales = this.normalizeAndSortSales(s);
-      this.ensureValidSalesPage();
+      this.applySaleFilters(false);
       this.salesInitialLoadCompleted = true;
       this.cdr.markForCheck();
     });
