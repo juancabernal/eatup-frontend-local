@@ -104,6 +104,18 @@
   color: var(--accent-hover);
 }
 
+.btn-update {
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+  color: var(--accent-text);
+}
+
+.btn-update:hover:not(:disabled) {
+  background: var(--accent-soft-strong);
+  border-color: var(--accent);
+  color: var(--accent-hover);
+}
+
 /* Selectores de vendedor y mesa */
 .selector-btn:hover:not(:disabled) {
   background: var(--accent-soft);
@@ -268,6 +280,26 @@
   transform: none;
   box-shadow: none;
 }
+
+.btn-update:disabled,
+.btn-update:disabled:hover,
+.btn-update:disabled:active {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+  color: #94a3b8;
+  opacity: .8;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.update-sale-modal{width:min(760px,96vw);max-width:760px}
+.update-meta-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem;margin:.6rem 0}
+.meta-item{border:1px solid #e2e8f0;border-radius:12px;padding:.55rem .7rem;display:flex;flex-direction:column}
+.meta-item span{font-size:.78rem;color:#64748b}
+.update-line{display:grid;gap:.55rem}
+.update-line-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem}
+.update-total{margin-top:.7rem;display:flex;justify-content:space-between;align-items:center;border-top:1px solid #e2e8f0;padding-top:.55rem}
 
 .btn-comment:disabled,
 .btn-comment:disabled:hover,
