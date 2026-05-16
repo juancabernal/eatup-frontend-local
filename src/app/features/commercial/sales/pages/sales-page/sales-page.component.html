@@ -47,7 +47,7 @@
       @for (s of sales; track s.id) {
         <article class="sale-card">
           <div class="sale-top"><h4>Venta {{ saleLabel(s.id) }}</h4><span class="badge" [class.info]="s.status==='CREATED'" [class.warn]="s.status==='IN_PROGRESS'" [class.ok]="s.status==='COMPLETED'" [class.error]="s.status==='CANCELLED'">{{ saleStatusLabel(s.status) }}</span></div>
-          <p class="muted">Total: <strong>{{ s.totalAmount | currency:'COP':'symbol':'1.0-0' }}</strong> · Líneas: {{ s.details?.length || 0 }} @if(s.createdDate){ · {{ s.createdDate | date:'dd/MM/yyyy HH:mm' }} }</p>
+          <p class="muted">Total: <strong>{{ s.totalAmount | currency:'COP':'symbol':'1.0-0' }}</strong> · Líneas: {{ s.details.length }} @if(s.createdDate){ · {{ s.createdDate | date:'dd/MM/yyyy HH:mm' }} }</p>
           <div class="actions"><button class="btn btn-soft" (click)="loadTrace(s.id)">Ver trazabilidad</button>@if(s.status==='CREATED'){<button class="btn btn-soft" (click)="changeStatus(s.id,'IN_PROGRESS')">En proceso</button>}@if(s.status==='IN_PROGRESS'){<button class="btn btn-soft" (click)="changeStatus(s.id,'COMPLETED')">Completar</button>}@if(s.status!=='COMPLETED'){<button class="btn btn-danger" (click)="askDelete(s.id)">Eliminar</button>}</div>
           @if(tracesBySaleId[s.id]){<div class="trace-box">@if(!tracesBySaleId[s.id].length){<p class="muted">No hay trazabilidad registrada para esta venta.</p>}@for(t of tracesBySaleId[s.id];track t.id){<div class="trace-row"><div><strong>{{ recipeNameById(t.recipeId) }}</strong><p class="muted">{{ t.observation || 'Sin observación' }}</p></div><span class="badge" [class.ok]="t.status==='ACCEPTED'" [class.error]="t.status==='REJECTED'">{{ traceStatusLabel(t.status) }}</span></div>}</div>}
         </article>
@@ -61,4 +61,12 @@
 @if(showTableModal){<div class="modal"><div class="modal-card"><button class="x" (click)="showTableModal=false">✕</button><h3>Seleccionar mesa</h3><input class="input" [(ngModel)]="tableQuery" placeholder="Buscar mesa"/><div class="pick-list">@for (t of filteredTables; track t.id){<button class="pick" [disabled]="!tableAvailable(t)" (click)="pickTable(t)"><span>{{ tableDisplayName(t) }}</span><small class="badge" [class.ok]="tableAvailable(t)" [class.error]="!tableAvailable(t)">{{ tableAvailable(t) ? 'Disponible' : 'No disponible' }}</small></button>}</div></div></div>}
 @if(showDeleteModal){<div class="modal"><div class="modal-card"><h3>¿Eliminar venta?</h3><p class="muted">Esta acción se enviará a procesamiento asíncrono.</p><div class="modal-actions"><button class="btn btn-ghost" (click)="showDeleteModal=false">Cancelar</button><button class="btn btn-danger" (click)="deleteSale()">Eliminar</button></div></div></div>}
 
-@if(toast){<div class="toast" [class.success]="toast.type==='success'" [class.error]="toast.type==='error'"><button class="x" (click)="closeToast()">✕</button><p>{{ toast.message }}</p><div class="progress"></div></div>}
+<div class="toasts-wrap">
+  @for (toast of toasts; track toast.id) {
+    <div class="toast" [class.success]="toast.type==='success'" [class.error]="toast.type==='error'">
+      <button class="x toast-close" type="button" (click)="removeToast(toast.id)">✕</button>
+      <p>{{ toast.message }}</p>
+      <div class="progress" [style.animation-duration.ms]="toast.duration"></div>
+    </div>
+  }
+</div>
