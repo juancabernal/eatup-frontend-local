@@ -1,0 +1,95 @@
+<div class="sales-page">
+  <header class="page-header">
+    <h1>Ventas</h1>
+    <p>Gestiona órdenes, recetas y trazabilidad de ventas.</p>
+  </header>
+
+  <section class="main-grid">
+    <article class="surface catalog-panel">
+      <div class="panel-head"><h2>Catálogo de recetas</h2></div>
+      <div class="search-row"><input class="input" [(ngModel)]="recipeQuery" placeholder="Buscar receta por nombre" /></div>
+      <div class="recipe-grid">
+        @for (r of filteredRecipes; track r.id) {
+          <article class="recipe-card">
+            <div><h4 class="truncate">{{ r.name }}</h4><p class="price">{{ r.sellingPrice | currency:'COP':'symbol':'1.0-0' }}</p></div>
+            <div class="badges"><span class="badge" [class.ok]="r.active" [class.error]="!r.active">{{ r.active ? 'Activa' : 'Inactiva' }}</span><span class="badge" [class.info]="r.visibleInMenu" [class.warn]="!r.visibleInMenu">{{ r.visibleInMenu ? 'Visible' : 'Oculta' }}</span></div>
+            <button class="btn btn-primary" (click)="addToCart(r)" [disabled]="!r.active || r.sellingPrice <= 0">Agregar</button>
+          </article>
+        }
+      </div>
+    </article>
+
+    <article class="surface order-panel">
+      <div class="order-head"><h2>🛒 Orden actual</h2><span>{{ cartItems.length }} recetas</span></div>
+      <div class="meta"><label>Vendedor</label><button class="selector-btn" type="button" (click)="showSellerModal=true" [attr.aria-label]="selectedSellerName || 'Seleccionar vendedor'">{{ selectedSellerName || 'Seleccionar vendedor' }}</button></div>
+      <div class="meta"><label>Mesa</label><button class="selector-btn" type="button" (click)="showTableModal=true" [attr.aria-label]="selectedTableName || 'Seleccionar mesa'">{{ selectedTableName || 'Seleccionar mesa' }}</button></div>
+      <p class="muted">Sede configurada</p>
+      <div class="cart-list">
+        @for (i of cartItems; track i.recipeId) {
+          <div class="cart-item">
+            <div class="cart-top"><strong class="truncate">{{ i.recipeName }}</strong><span>{{ i.unitPrice | currency:'COP':'symbol':'1.0-0' }}</span></div>
+            <div class="cart-actions">
+              <input class="quantity-input" type="number" [ngModel]="i.quantity" (ngModelChange)="updateQty(i.recipeId,$event)" min="1" />
+              <button class="btn btn-comment" type="button" (click)="openComment(i)">💬 Comentario</button>
+              <button class="btn btn-danger" (click)="removeItem(i.recipeId)">Eliminar</button>
+            </div>
+            @if (i.recipeLineComment && i.recipeLineComment !== 'Sin observaciones') { <span class="badge info">Con comentario</span> }
+          </div>
+        }
+      </div>
+      <footer class="order-footer"><div><p>Subtotal</p><strong>{{ total | currency:'COP':'symbol':'1.0-0' }}</strong></div><div><p>Total</p><strong>{{ total | currency:'COP':'symbol':'1.0-0' }}</strong></div><button class="btn btn-primary" (click)="completeSale()">Completar venta</button></footer>
+    </article>
+  </section>
+
+  <section class="surface sales-panel">
+    <h2>Ventas recientes</h2>
+    <div class="sales-table-wrap">
+      <table class="sales-table">
+        <thead>
+          <tr><th>Venta</th><th>Estado</th><th>Total</th><th>Líneas</th><th>Fecha</th><th>Acciones</th></tr>
+        </thead>
+        <tbody>
+          @for (s of paginatedSales; track trackBySaleId($index, s)) {
+            <tr>
+              <td>Venta {{ saleLabel(s.id) }}</td>
+              <td><span class="badge" [class.info]="s.status==='CREATED'" [class.warn]="s.status==='IN_PROGRESS'" [class.ok]="s.status==='COMPLETED'" [class.error]="s.status==='CANCELLED'">{{ saleStatusLabel(s.status) }}</span></td>
+              <td>{{ (s.totalAmount || 0) | currency:'COP':'symbol':'1.0-0' }}</td>
+              <td>{{ s.details.length }} {{ s.details.length === 1 ? 'línea' : 'líneas' }}</td>
+              <td>{{ (s.createdDate || s.modifiedDate) | date:'dd/MM/yyyy HH:mm' }}</td>
+              <td><div class="actions compact"><button class="btn btn-soft" (click)="openTraceModal(s.id)">Ver trazabilidad</button>@if(s.status==='CREATED'){<button class="btn btn-soft" (click)="changeStatus(s.id,'IN_PROGRESS')">En proceso</button>}@if(s.status==='IN_PROGRESS'){<button class="btn btn-soft" (click)="changeStatus(s.id,'COMPLETED')">Completar</button>}@if(s.status!=='COMPLETED'){<button class="btn btn-danger" (click)="askDelete(s.id)">Eliminar</button>}</div></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <div class="sales-pagination">
+      <span class="muted">Mostrando {{ salesRangeStart }}-{{ salesRangeEnd }} de {{ sales.length }}</span>
+      <div class="pager-controls">
+        <label>Tamaño
+          <select class="input page-size" [ngModel]="salesPageSize" (ngModelChange)="changeSalesPageSize($event)">
+            @for (size of salesPageSizeOptions; track size) { <option [ngValue]="size">{{ size }}</option> }
+          </select>
+        </label>
+        <button class="btn btn-ghost" (click)="prevSalesPage()" [disabled]="salesPage<=1">Anterior</button>
+        <span>Página {{ salesPage }} de {{ totalSalesPages }}</span>
+        <button class="btn btn-ghost" (click)="nextSalesPage()" [disabled]="salesPage>=totalSalesPages">Siguiente</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+@if(showCommentModal){<div class="modal"><div class="modal-card"><button class="x" (click)="showCommentModal=false">✕</button><h3>Comentario para {{ commentRecipeName() }}</h3><p class="muted">Agrega una observación específica para cocina.</p><textarea class="input" [(ngModel)]="modalComment" placeholder="Ej: Sin cebolla, término medio..."></textarea><div class="modal-actions"><button class="btn btn-ghost" (click)="showCommentModal=false">Cancelar</button><button class="btn btn-primary" (click)="saveComment()">Guardar comentario</button></div></div></div>}
+@if(showSellerModal){<div class="modal"><div class="modal-card"><button class="x" (click)="showSellerModal=false">✕</button><h3>Seleccionar vendedor</h3><input class="input" [(ngModel)]="sellerQuery" placeholder="Buscar por nombre o documento"/><div class="pick-list">@for (s of filteredSellers; track s.id){<button class="pick" (click)="pickSeller(s)"><span>{{ sellerDisplayName(s) }}</span><small>{{ s.document || 'Sin documento' }}</small></button>}</div></div></div>}
+@if(showTableModal){<div class="modal"><div class="modal-card"><button class="x" (click)="showTableModal=false">✕</button><h3>Seleccionar mesa</h3><input class="input" [(ngModel)]="tableQuery" placeholder="Buscar mesa"/><div class="pick-list">@for (t of filteredTables; track t.id){<button class="pick" [disabled]="!tableAvailable(t)" (click)="pickTable(t)"><span>{{ tableDisplayName(t) }}</span><small class="badge" [class.ok]="tableAvailable(t)" [class.error]="!tableAvailable(t)">{{ tableAvailable(t) ? 'Disponible' : 'No disponible' }}</small></button>}</div></div></div>}
+@if(showDeleteModal){<div class="modal"><div class="modal-card"><h3>¿Eliminar venta?</h3><p class="muted">Esta acción se enviará a procesamiento asíncrono.</p><div class="modal-actions"><button class="btn btn-ghost" (click)="showDeleteModal=false">Cancelar</button><button class="btn btn-danger" (click)="deleteSale()">Eliminar</button></div></div></div>}
+@if(showTraceModal){<div class="modal"><div class="modal-card trace-modal"><button class="x" (click)="closeTraceModal()">✕</button><h3>Trazabilidad de la venta {{ activeTraceSaleLabel() }}</h3><p class="muted">Consulta el resultado del procesamiento de inventario por receta.</p>@if(traceLoading){<p class="muted">Cargando trazabilidad...</p>}@else if(!activeTraceItems().length){<p class="muted">No hay trazabilidad registrada para esta venta.</p>}@else{<div class="trace-list">@for(t of activeTraceItems();track t.id){<article class="trace-item"><div class="trace-item-head"><strong>{{ traceRecipeName(t) }}</strong><span class="badge" [class.ok]="t.status==='ACCEPTED'" [class.error]="t.status==='REJECTED'">{{ traceStatusLabel(t.status) }}</span></div><p class="muted">{{ t.observation || 'Sin observación' }}</p>@if(t.createdDate){<small class="muted">{{ t.createdDate | date:'dd/MM/yyyy HH:mm' }}</small>}</article>}</div>}<div class="modal-actions"><button class="btn btn-ghost" (click)="closeTraceModal()">Cerrar</button></div></div></div>}
+
+<div class="toasts-wrap">
+  @for (toast of toasts; track toast.id) {
+    <div class="toast" [class.success]="toast.type==='success'" [class.error]="toast.type==='error'">
+      <button class="x toast-close" type="button" (click)="removeToast(toast.id)">✕</button>
+      <p>{{ toast.message }}</p>
+      <div class="progress" [style.animation-duration.ms]="toast.duration"></div>
+    </div>
+  }
+</div>
