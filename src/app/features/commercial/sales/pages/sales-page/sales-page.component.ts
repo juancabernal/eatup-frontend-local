@@ -9,6 +9,7 @@ import { SellerTableService } from '../../services/seller-table.service';
 import { EnvironmentService } from '../../../../../core/services/environment.service';
 
 type ToastType = 'success' | 'error';
+type ToastMessage = { id: string; type: ToastType; message: string; duration: number };
 
 @Component({
   selector: 'app-sales-page', standalone: true, imports: [CommonModule, FormsModule, CurrencyPipe, DatePipe],
@@ -20,7 +21,7 @@ export class SalesPageComponent implements OnInit {
   selectedSellerId = ''; selectedSellerName = ''; selectedTableId = ''; selectedTableName = '';
   showCommentModal = false; showSellerModal = false; showTableModal = false; showDeleteModal = false;
   selectedCartRecipeId = ''; modalComment = 'Sin observaciones'; deletingSaleId = ''; loading = false;
-  toast: { id: number; type: ToastType; message: string } | null = null;
+  toasts: ToastMessage[] = [];
 
   constructor(private salesService: SalesService, private recipeService: RecipeService, private sellerTableService: SellerTableService, private cdr: ChangeDetectorRef, public env: EnvironmentService) {}
 
@@ -46,10 +47,10 @@ export class SalesPageComponent implements OnInit {
     this.cartItems = i ? this.cartItems.map(x => x.recipeId === recipe.id ? { ...x, quantity: x.quantity + 1 } : x) : [...this.cartItems, { recipeId: recipe.id, recipeName: recipe.name, lineDisplayName: recipe.name, quantity: 1, unitPrice: recipe.sellingPrice, recipeLineComment: 'Sin observaciones' }];
     this.cdr.markForCheck();
   }
-  updateQty(id: string, qty: number) { const q = Math.max(1, qty || 1); this.cartItems = this.cartItems.map(x => x.recipeId === id ? { ...x, quantity: q } : x); }
-  removeItem(id: string) { this.cartItems = this.cartItems.filter(x => x.recipeId !== id); }
+  updateQty(id: string, qty: number) { const q = Math.max(1, qty || 1); this.cartItems = this.cartItems.map(x => x.recipeId === id ? { ...x, quantity: q } : x); this.cdr.markForCheck(); }
+  removeItem(id: string) { this.cartItems = this.cartItems.filter(x => x.recipeId !== id); this.cdr.markForCheck(); }
   openComment(item: CartItem) { this.selectedCartRecipeId = item.recipeId; this.modalComment = item.recipeLineComment || 'Sin observaciones'; this.showCommentModal = true; }
-  saveComment() { const c = this.modalComment.trim() || 'Sin observaciones'; this.cartItems = this.cartItems.map(x => x.recipeId === this.selectedCartRecipeId ? { ...x, recipeLineComment: c } : x); this.showCommentModal = false; }
+  saveComment() { const c = this.modalComment.trim() || 'Sin observaciones'; this.cartItems = this.cartItems.map(x => x.recipeId === this.selectedCartRecipeId ? { ...x, recipeLineComment: c } : x); this.showCommentModal = false; this.cdr.markForCheck(); }
   get total() { return this.cartItems.reduce((a, b) => a + b.quantity * b.unitPrice, 0); }
 
   completeSale() {
@@ -57,11 +58,13 @@ export class SalesPageComponent implements OnInit {
     if (!this.selectedTableId) return this.showToast('error', 'Debes seleccionar una mesa disponible.');
     if (!this.cartItems.length) return this.showToast('error', 'Agrega al menos una receta a la venta.');
 
-    const payload = { sellerId: this.selectedSellerId, locationId: (window as any).ENV?.LOCATION_ID || 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', tableId: this.selectedTableId, details: this.cartItems.map(i => ({ recipeId: i.recipeId, quantity: i.quantity, unitPrice: i.unitPrice, recipeLineComment: i.recipeLineComment || 'Sin observaciones', lineDisplayName: i.lineDisplayName })) };
+    if (this.cartItems.some(i => !i.recipeId || i.quantity <= 0 || i.unitPrice <= 0)) return this.showToast('error', 'Hay líneas inválidas en la orden actual. Revisa cantidad y precio.');
+
+    const payload = { sellerId: this.selectedSellerId, locationId: (window as any).ENV?.LOCATION_ID || 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', tableId: this.selectedTableId, details: this.cartItems.map(i => ({ recipeId: i.recipeId, quantity: i.quantity, unitPrice: i.unitPrice, recipeLineComment: i.recipeLineComment?.trim() || 'Sin observaciones', lineDisplayName: i.lineDisplayName || i.recipeName })) };
     this.salesService.createSale(payload).subscribe({
       next: (res) => {
         this.showToast('success', 'Venta recibida. Se está procesando con inventario.');
-        this.cartItems = []; this.refreshSales();
+        this.cartItems = []; this.cdr.markForCheck(); this.refreshSales();
         if (res.saleId) interval(2500).pipe(take(4), switchMap(() => this.salesService.getSaleById(res.saleId))).subscribe({ next: () => this.refreshSales(), error: () => {} });
       },
       error: () => this.showToast('error', 'No se pudo crear la venta.')
@@ -71,7 +74,16 @@ export class SalesPageComponent implements OnInit {
   refreshSales() { this.salesService.getSales().subscribe({ next: s => { this.sales = [...s]; this.cdr.markForCheck(); }, error: () => this.showToast('error', 'No se pudieron refrescar las ventas.') }); }
   changeStatus(id: string, status: SaleStatus) { this.salesService.patchSaleStatus(id, status).subscribe({ next: () => { this.showToast('success', 'Actualización enviada a procesamiento.'); this.refreshSales(); }, error: () => this.showToast('error', 'No se pudo actualizar el estado.') }); }
   askDelete(id: string) { this.deletingSaleId = id; this.showDeleteModal = true; }
-  deleteSale() { this.salesService.deleteSale(this.deletingSaleId).subscribe({ next: () => { this.showDeleteModal = false; this.showToast('success', 'Eliminación enviada a procesamiento.'); this.refreshSales(); }, error: () => this.showToast('error', 'No se pudo eliminar la venta.') }); }
+  deleteSale() {
+    const target = this.sales.find(s => s.id === this.deletingSaleId);
+    if (target?.status === 'COMPLETED') {
+      this.showDeleteModal = false;
+      this.showToast('error', 'No se puede eliminar una venta completada.');
+      this.cdr.markForCheck();
+      return;
+    }
+    this.salesService.deleteSale(this.deletingSaleId).subscribe({ next: () => { this.showDeleteModal = false; this.showToast('success', 'Eliminación enviada a procesamiento.'); this.refreshSales(); }, error: () => this.showToast('error', 'No se pudo eliminar la venta.') });
+  }
   loadTrace(id: string) { this.salesService.getSalePreparations(id).subscribe({ next: t => { this.tracesBySaleId = { ...this.tracesBySaleId, [id]: [...t] }; this.cdr.markForCheck(); }, error: () => this.showToast('error', 'No se pudo cargar la trazabilidad.') }); }
   pickSeller(s: Seller) { this.selectedSellerId = s.id; this.selectedSellerName = this.sellerDisplayName(s); this.showSellerModal = false; }
 
@@ -84,6 +96,15 @@ export class SalesPageComponent implements OnInit {
   saleStatusLabel(status: SaleStatus) { return ({ CREATED: 'Creada', IN_PROGRESS: 'En proceso', COMPLETED: 'Completada', CANCELLED: 'Cancelada' })[status] || status; }
   traceStatusLabel(status: string) { return status === 'ACCEPTED' ? 'Aceptada' : 'Rechazada'; }
   commentRecipeName() { return this.cartItems.find(i => i.recipeId === this.selectedCartRecipeId)?.recipeName || 'receta'; }
-  showToast(type: ToastType, message: string) { const id = Date.now(); this.toast = { id, type, message }; this.cdr.markForCheck(); setTimeout(() => { if (this.toast?.id === id) { this.toast = null; this.cdr.markForCheck(); } }, 4500); }
-  closeToast() { this.toast = null; }
+  showToast(type: ToastType, message: string) {
+    const toast: ToastMessage = { id: crypto.randomUUID(), type, message, duration: 4500 };
+    this.toasts = [...this.toasts, toast];
+    window.setTimeout(() => this.removeToast(toast.id), toast.duration);
+    this.cdr.markForCheck();
+  }
+
+  removeToast(id: string) {
+    this.toasts = this.toasts.filter(t => t.id !== id);
+    this.cdr.markForCheck();
+  }
 }
