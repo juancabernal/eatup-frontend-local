@@ -15,3 +15,22 @@
 @media (max-width:640px){.actions{gap:.35rem}.btn{font-size:.86rem;padding:.46rem .58rem}.toasts-wrap{left:12px;right:12px;max-width:none}}
 
 .selector-btn{width:100%;display:flex;align-items:center;justify-content:flex-start;background:#fff;border:1px solid #cbd5e1;border-radius:14px;padding:.72rem .85rem;color:#0f172a;font-weight:600;cursor:pointer;transition:border-color .18s ease,box-shadow .18s ease,background-color .18s ease,transform .18s ease}.selector-btn:hover{border-color:#fdba74;background:#fff7ed}.selector-btn:focus-visible{outline:none;border-color:#f97316;box-shadow:0 0 0 4px rgba(249,115,22,.14)}.selector-btn:active{transform:scale(.98)}
+
+.filters-card{background:#f8fffe;border:1px solid #cfe8e5;border-radius:14px;padding:.75rem;margin:.55rem 0 .75rem}
+.filters-grid{display:grid;gap:.55rem;align-items:end}
+.recipe-filters-grid{grid-template-columns:repeat(5,minmax(0,1fr))}
+.recipe-filters-grid .filter-field-full{grid-column:1/-1}
+.sales-filters-grid{grid-template-columns:repeat(7,minmax(0,1fr))}
+.filter-field{display:flex;flex-direction:column;gap:.25rem;min-width:0}
+.filter-label{font-size:.78rem;color:#0f766e;font-weight:600}
+.filter-input,.filter-select{width:100%;border:1px solid #bcdad6;background:#fff;border-radius:10px;padding:.5rem .65rem;outline:none;transition:border-color .2s, box-shadow .2s}
+.filter-input:focus,.filter-select:focus{border-color:#0f766e;box-shadow:0 0 0 3px rgba(15,118,110,.15)}
+.clear-filters-btn{border:1px solid #0f766e;background:#ecfdf5;color:#0f766e;border-radius:10px;padding:.5rem .7rem;font-weight:700;cursor:pointer;min-height:40px}
+.clear-filters-btn:hover{background:#d1fae5}
+.empty-state{padding:.9rem;border:1px dashed #99d4cc;background:#f0fdfa;border-radius:12px;color:#0f766e;text-align:center;font-weight:600}
+.catalog-panel .recipe-grid{align-items:start}
+.recipe-card{min-height:260px;max-height:320px}
+.badges{align-items:center}
+
+@media (max-width:1200px){.recipe-filters-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.sales-filters-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:720px){.recipe-filters-grid,.sales-filters-grid{grid-template-columns:1fr}.clear-filters-btn{width:100%}}
