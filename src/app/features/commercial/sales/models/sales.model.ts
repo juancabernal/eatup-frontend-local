@@ -66,6 +66,10 @@ export interface Seller {
   fullName?: string;
   firstName?: string;
   lastName?: string;
+  email?: string;
+  identificationNumber?: string;
+  identification_number?: string;
+  phone?: string;
   document?: string;
   active?: boolean;
   status?: string;
@@ -74,12 +78,16 @@ export interface Seller {
 export interface RestaurantTable {
   id: string;
   name?: string;
+  tableName?: string;
   number?: string | number;
+  tableNumber?: string | number;
   code?: string;
   displayName?: string;
   status?: string;
   available?: boolean;
   occupied?: boolean;
+  reserved?: boolean;
+  canOpenNow?: boolean;
   active?: boolean;
   locationId?: string;
 }
