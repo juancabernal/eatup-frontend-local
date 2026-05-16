@@ -129,7 +129,13 @@ export class SalesPageComponent implements OnInit {
   saleStatusLabel(status: SaleStatus) { return ({ CREATED: 'Creada', IN_PROGRESS: 'En proceso', COMPLETED: 'Completada', CANCELLED: 'Cancelada' })[status] || status; }
   traceStatusLabel(status: string) { return status === 'ACCEPTED' ? 'Aceptada' : 'Rechazada'; }
   trackBySaleId(_: number, sale: SaleResponse) { return sale.id; }
-  traceRecipeName(trace: RecipePreparationTrace) { return this.recipeNameById(trace.recipeId) || trace.lineDisplayName || 'Receta no encontrada'; }
+  traceRecipeName(trace: RecipePreparationTrace) {
+    const fromCatalog = this.recipes.find(r => r.id === trace.recipeId)?.name;
+    if (fromCatalog) return fromCatalog;
+    const selectedSale = this.sales.find(s => s.id === this.selectedTraceSaleId);
+    const fromSaleLine = selectedSale?.details?.find(d => d.recipeId === trace.recipeId)?.lineDisplayName;
+    return fromSaleLine || 'Receta no encontrada';
+  }
   activeTraceSaleLabel() { return this.selectedTraceSaleId ? this.saleLabel(this.selectedTraceSaleId) : ''; }
   activeTraceItems() { return this.selectedTraceSaleId ? (this.tracesBySaleId[this.selectedTraceSaleId] ?? []) : []; }
   commentRecipeName() { return this.cartItems.find(i => i.recipeId === this.selectedCartRecipeId)?.recipeName || 'receta'; }
