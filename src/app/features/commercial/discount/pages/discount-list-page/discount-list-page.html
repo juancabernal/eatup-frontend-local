@@ -1,0 +1,107 @@
+<div class="page-header">
+  <div>
+    <h1>Descuentos</h1>
+    <p>Gestión y visualización de descuentos registrados.</p>
+  </div>
+  <a routerLink="new" class="btn-primary">+ Nuevo Descuento</a>
+</div>
+
+<div class="stats-row">
+  <div class="stat-card">
+    <span class="stat-label">Total</span>
+    <span class="stat-value">{{ discounts().length }}</span>
+  </div>
+  <div class="stat-card stat-card--active">
+    <span class="stat-label">Activos</span>
+    <span class="stat-value">{{ totalActive }}</span>
+  </div>
+  <div class="stat-card stat-card--inactive">
+    <span class="stat-label">Inactivos</span>
+    <span class="stat-value">{{ totalInactive }}</span>
+  </div>
+</div>
+
+<div class="toolbar">
+  <input class="search-input"
+         type="text"
+         placeholder="Buscar por descripción o porcentaje..."
+         [ngModel]="search()"
+         (ngModelChange)="onSearch($event)" />
+
+  <select class="sort-select" [ngModel]="sortBy()" (ngModelChange)="onSort($event)">
+    <option value="">Ordenar por...</option>
+    <option value="createdAt">Más reciente (creación)</option>
+    <option value="modifiedAt">Más reciente (modificación)</option>
+    <option value="inactive">Inactivos primero</option>
+  </select>
+</div>
+
+@if (loading()) {
+  <p class="loading">Cargando...</p>
+}
+
+@if (error()) {
+  <div class="error-box">
+    <strong>Error:</strong> {{ error() }}
+  </div>
+}
+
+@if (!loading() && !error()) {
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Descripción</th>
+          <th>Porcentaje</th>
+          <th>Estado</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (discount of paginatedDiscounts; track discount.id) {
+          <tr>
+            <td>{{ discount.description }}</td>
+            <td><span class="pct-badge">{{ discount.percentage }}%</span></td>
+            <td>
+              <span [class]="discount.status ? 'badge-active' : 'badge-inactive'">
+                {{ discount.status ? 'Activo' : 'Inactivo' }}
+              </span>
+            </td>
+              <td class="actions">
+                <a [routerLink]="[discount.id]" class="btn-action">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                  Ver
+                </a>
+                <button (click)="toggleStatus(discount.id, discount.status)" class="btn-action btn-toggle">
+                  @if (discount.status) {
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+                    </svg>
+                    Desactivar
+                  } @else {
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>
+                    </svg>
+                    Activar
+                  }
+                </button>
+              </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="4" class="empty">No hay descuentos que coincidan.</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+
+    <div class="pagination">
+      <button (click)="goToPage(currentPage() - 1)" [disabled]="currentPage() === 1">← Anterior</button>
+      <span>Página {{ currentPage() }} de {{ totalPages || 1 }}</span>
+      <button (click)="goToPage(currentPage() + 1)" [disabled]="currentPage() === totalPages || totalPages === 0">Siguiente →</button>
+    </div>
+  </div>
+}
