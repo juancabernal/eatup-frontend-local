@@ -221,7 +221,17 @@ export class LayoutComponent {
         { name: 'Mesas', path: '/commercial/tables' },
         { name: 'Ventas', path: '/commercial/sales' }
       ]
-    }
+    },
+
+        
+    {
+      name: 'Inventory',
+      expanded: false,
+      features: [
+        { name: 'Locations', path: '/inventory/location' }
+      ]
+}
+    
   ]);
 
   toggleModule(moduleName: string) {
