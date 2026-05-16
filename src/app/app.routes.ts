@@ -50,9 +50,17 @@ export const routes: Routes = [
       },
       {
         path: 'commercial/discount',
-         loadChildren: () =>
-          import('./features/commercial/discount/discount.routes')
-            .then(m => m.DISCOUNT_ROUTES)
+        loadChildren: () =>
+          import('./features/commercial/discount/discount.routes').then(
+            m => m.DISCOUNT_ROUTES
+          )
+      },
+      {
+        path: 'commercial/tables',
+        loadChildren: () =>
+          import('./features/commercial/tables/tables.routes').then(
+            m => m.TABLES_ROUTES
+          )
       }
     ]
   },

@@ -212,14 +212,15 @@ export class LayoutComponent {
         { name: 'Payment Method', path: '/payment/paymentmethod' }
       ]
     },
-    {
-      name: 'Commercial',
-       expanded: false,
-       features: [
-         { name: 'Descuentos', path: '/commercial/discount' },
-         { name: 'Ventas', path: '/commercial/sales' }
-     ]
-    }
+ {
+  name: 'Commercial',
+  expanded: false,
+  features: [
+    { name: 'Descuentos', path: '/commercial/discount' },
+    { name: 'Mesas', path: '/commercial/tables' },
+    { name: 'Ventas', path: '/commercial/sales' }
+  ]
+}
   ]);
 
   toggleModule(moduleName: string) {
