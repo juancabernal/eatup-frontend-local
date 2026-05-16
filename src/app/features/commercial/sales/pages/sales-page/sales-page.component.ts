@@ -58,7 +58,7 @@ export class SalesPageComponent implements OnInit {
     if (!this.selectedTableId) return this.showToast('error', 'Debes seleccionar una mesa disponible.');
     if (!this.cartItems.length) return this.showToast('error', 'Agrega al menos una receta a la venta.');
 
-    if (this.cartItems.some(i => !i.recipeId || i.quantity <= 0 || i.unitPrice <= 0)) return this.showToast('error', 'Hay líneas inválidas en la orden actual. Revisa cantidad y precio.');
+    if (this.cartItems.some(i => !i.recipeId || i.quantity <= 0 || i.unitPrice <= 0)) return this.showToast('error', 'La cantidad debe ser mayor que cero.');
 
     const payload = { sellerId: this.selectedSellerId, locationId: (window as any).ENV?.LOCATION_ID || 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', tableId: this.selectedTableId, details: this.cartItems.map(i => ({ recipeId: i.recipeId, quantity: i.quantity, unitPrice: i.unitPrice, recipeLineComment: i.recipeLineComment?.trim() || 'Sin observaciones', lineDisplayName: i.lineDisplayName || i.recipeName })) };
     this.salesService.createSale(payload).subscribe({
@@ -87,12 +87,12 @@ export class SalesPageComponent implements OnInit {
   loadTrace(id: string) { this.salesService.getSalePreparations(id).subscribe({ next: t => { this.tracesBySaleId = { ...this.tracesBySaleId, [id]: [...t] }; this.cdr.markForCheck(); }, error: () => this.showToast('error', 'No se pudo cargar la trazabilidad.') }); }
   pickSeller(s: Seller) { this.selectedSellerId = s.id; this.selectedSellerName = this.sellerDisplayName(s); this.showSellerModal = false; }
 
-  tableAvailable(t: RestaurantTable) { const s = (t.status || '').toUpperCase(); if (t.available === true || t.occupied === false || ['AVAILABLE', 'DISPONIBLE', 'FREE', 'LIBRE'].includes(s)) return true; if (t.available === false || t.occupied === true || ['OCCUPIED', 'OCUPADA', 'BUSY', 'IN_USE'].includes(s)) return false; return false; }
+  tableAvailable(t: RestaurantTable) { const s = (t.status || '').toUpperCase(); if (t.available === true || t.canOpenNow === true || t.reserved === false || t.occupied === false || ['AVAILABLE', 'DISPONIBLE', 'FREE', 'LIBRE', 'ACTIVE'].includes(s)) return true; if (t.available === false || t.canOpenNow === false || t.reserved === true || t.occupied === true || ['OCCUPIED', 'OCUPADA', 'BUSY', 'IN_USE', 'INACTIVE'].includes(s)) return false; return false; }
   pickTable(t: RestaurantTable) { if (!this.tableAvailable(t)) return; this.selectedTableId = t.id; this.selectedTableName = this.tableDisplayName(t); this.showTableModal = false; }
   saleLabel(id: string) { return `#${id.slice(-6).toUpperCase()}`; }
   recipeNameById(id: string) { return this.recipes.find(r => r.id === id)?.name ?? 'Receta no encontrada'; }
-  sellerDisplayName(s: Seller) { return s.fullName || s.name || `${s.firstName ?? ''} ${s.lastName ?? ''}`.trim() || 'Vendedor'; }
-  tableDisplayName(t: RestaurantTable) { return t.displayName || t.name || (t.number ? `Mesa ${t.number}` : t.code) || 'Mesa sin nombre'; }
+  sellerDisplayName(s: Seller) { return s.fullName || s.name || `${s.firstName ?? ''} ${s.lastName ?? ''}`.trim() || s.email || s.identificationNumber || (s as any).identification_number || s.phone || 'Vendedor sin nombre'; }
+  tableDisplayName(t: RestaurantTable) { const num = t.number ?? t.tableNumber; return t.displayName || t.name || t.tableName || (num ? `Mesa ${num}` : t.code) || 'Mesa sin nombre'; }
   saleStatusLabel(status: SaleStatus) { return ({ CREATED: 'Creada', IN_PROGRESS: 'En proceso', COMPLETED: 'Completada', CANCELLED: 'Cancelada' })[status] || status; }
   traceStatusLabel(status: string) { return status === 'ACCEPTED' ? 'Aceptada' : 'Rechazada'; }
   commentRecipeName() { return this.cartItems.find(i => i.recipeId === this.selectedCartRecipeId)?.recipeName || 'receta'; }
