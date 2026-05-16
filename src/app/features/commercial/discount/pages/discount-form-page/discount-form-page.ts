@@ -1,9 +1,17 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
 import { Router, ActivatedRoute, RouterLink } from '@angular/router';
 import { DiscountService } from '@commercial/discount/services/discount';
 import { Discount } from '@commercial/discount/models/discount.model';
+import { ENV } from '@config/env.config';
+
+interface Category {
+  id: string;
+  name: string;
+  status: string;
+}
 
 @Component({
   selector: 'app-discount-form-page',
@@ -14,13 +22,15 @@ import { Discount } from '@commercial/discount/models/discount.model';
 })
 export class DiscountFormPage implements OnInit {
   private readonly discountService = inject(DiscountService);
+  private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
+  private readonly categoriesUrl = `${ENV.apiUrl.replace('/api/v1', '')}/inventory/api/v1/categories/subtype/descuento`;
+
   isEditing = signal(false);
   submitting = signal(false);
-  submitError = signal<string | null>(null);
-  successMsg = signal<string | null>(null);
+  categories = signal<Category[]>([]);
 
   categoryId = '';
   percentage = 0;
@@ -28,14 +38,13 @@ export class DiscountFormPage implements OnInit {
 
   private discountId = '';
 
-  errors = {
-  categoryId: '',
-  percentage: '',
-  description: '',
-  general: ''
-};
+  errors = { categoryId: '', percentage: '', description: '', general: '' };
 
   ngOnInit(): void {
+    this.http.get<Category[]>(this.categoriesUrl).subscribe({
+      next: (data) => this.categories.set(data.filter(c => c.status === 'ACTIVE'))
+    });
+
     this.discountId = this.route.snapshot.paramMap.get('id') ?? '';
     if (this.discountId) {
       this.isEditing.set(true);
@@ -50,7 +59,7 @@ export class DiscountFormPage implements OnInit {
         this.percentage = data.percentage;
         this.description = data.description;
       },
-      error: () => this.submitError.set('Error al cargar el descuento.')
+      error: () => this.errors.general = 'Error al cargar el descuento.'
     });
   }
 
@@ -69,36 +78,17 @@ export class DiscountFormPage implements OnInit {
     this.errors = { categoryId: '', percentage: '', description: '', general: '' };
 
     let valid = true;
-
-    if (!this.categoryId.trim()) {
-      this.errors.categoryId = 'La categoría es obligatoria.';
-      valid = false;
-    }
-
-    if (!this.percentage || this.percentage < 1 || this.percentage > 100) {
-      this.errors.percentage = 'El porcentaje debe estar entre 1 y 100.';
-      valid = false;
-    }
-
-    if (!this.description.trim()) {
-      this.errors.description = 'La descripción es obligatoria.';
-      valid = false;
-    } else if (this.description.trim().length < 5) {
-      this.errors.description = 'La descripción debe tener mínimo 5 caracteres.';
-      valid = false;
-    } else if (this.description.trim().length > 100) {
-      this.errors.description = 'La descripción no puede superar 100 caracteres.';
-      valid = false;
-    }
-
+    if (!this.categoryId) { this.errors.categoryId = 'Selecciona una categoría.'; valid = false; }
+    if (!this.percentage || this.percentage < 1 || this.percentage > 100) { this.errors.percentage = 'El porcentaje debe estar entre 1 y 100.'; valid = false; }
+    if (!this.description.trim()) { this.errors.description = 'La descripción es obligatoria.'; valid = false; }
+    else if (this.description.trim().length < 5) { this.errors.description = 'La descripción debe tener mínimo 5 caracteres.'; valid = false; }
+    else if (this.description.trim().length > 100) { this.errors.description = 'La descripción no puede superar 100 caracteres.'; valid = false; }
     if (!valid) return;
 
-    this.submitError.set(null);
-    this.successMsg.set(null);
     this.submitting.set(true);
 
     const form = {
-      categoryId: this.categoryId.trim(),
+      categoryId: this.categoryId,
       percentage: this.percentage,
       description: this.description.trim()
     };

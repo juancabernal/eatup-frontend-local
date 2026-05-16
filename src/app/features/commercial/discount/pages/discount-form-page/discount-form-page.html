@@ -14,15 +14,18 @@
       <h2>Categoría</h2>
     </div>
     <div class="field-group">
-    <label for="categoryId">ID de la Categoría</label>
-    <input id="categoryId" type="text" class="input"
-            placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-            [(ngModel)]="categoryId" />
-    @if (errors.categoryId) {
+      <label for="categoryId">Categoría</label>
+      <select id="categoryId" class="input" [(ngModel)]="categoryId">
+        <option value="">-- Selecciona una categoría --</option>
+        @for (c of categories(); track c.id) {
+          <option [value]="c.id">{{ c.name }}</option>
+        }
+      </select>
+      @if (errors.categoryId) {
         <span class="field-error">{{ errors.categoryId }}</span>
-    } @else {
-        <span class="field-hint">Ingresa el ID de la categoría proporcionado por el administrador.</span>
-    }
+      } @else {
+        <span class="field-hint">Solo se muestran categorías activas de tipo descuento.</span>
+      }
     </div>
   </div>
 
@@ -67,9 +70,6 @@
   <div class="form-actions">
     @if (errors.general) {
       <div class="alert-error">{{ errors.general }}</div>
-    }
-    @if (successMsg()) {
-      <div class="alert-success">{{ successMsg() }}</div>
     }
     <button class="btn-primary"
             [disabled]="submitting()"

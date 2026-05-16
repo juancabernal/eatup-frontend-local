@@ -307,3 +307,38 @@ tbody tr:hover {
 .sort-select:focus {
   border-color: var(--color-primary);
 }
+.detail-pending {
+  color: #cbd5e1;
+  font-size: 0.85rem;
+}
+
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.4rem;
+  cursor: pointer;
+  color: #475569;
+  text-decoration: none;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.btn-icon:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.btn-icon.btn-action-danger {
+  color: #dc2626;
+  border-color: #fecaca;
+}
+
+.btn-icon.btn-action-danger:hover {
+  background: #fef2f2;
+}

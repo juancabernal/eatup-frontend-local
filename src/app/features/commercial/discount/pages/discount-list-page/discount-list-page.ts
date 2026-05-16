@@ -41,8 +41,8 @@ export class DiscountListPage implements OnInit {
         this.discounts.set(data);
         this.loading.set(false);
       },
-      error: () => {
-        this.error.set('Error al cargar los descuentos.');
+      error: (err) => {
+        this.error.set(err.error?.message ?? 'Error al cargar los descuentos.');
         this.loading.set(false);
       }
     });

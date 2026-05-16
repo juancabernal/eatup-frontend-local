@@ -40,19 +40,25 @@ export const routes: Routes = [
             m => m.PAYMENT_METHOD_ROUTES
           )
       },
-
-      {
-        path: 'commercial/sales',
-        loadChildren: () =>
-          import('./features/commercial/sales/sales.routes').then(
-            m => m.SALES_ROUTES
-          )
-      },
       {
         path: 'commercial/discount',
         loadChildren: () =>
           import('./features/commercial/discount/discount.routes').then(
             m => m.DISCOUNT_ROUTES
+          )
+      },
+      {
+        path: 'commercial/customer-discount',
+        loadChildren: () =>
+          import('./features/commercial/customer-discount/customer-discount.routes').then(
+            m => m.CUSTOMER_DISCOUNT_ROUTES
+          )
+      },
+      {
+        path: 'commercial/sales',
+        loadChildren: () =>
+          import('./features/commercial/sales/sales.routes').then(
+            m => m.SALES_ROUTES
           )
       },
       {
