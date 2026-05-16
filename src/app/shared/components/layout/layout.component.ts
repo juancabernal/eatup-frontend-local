@@ -219,6 +219,13 @@ export class LayoutComponent {
          { name: 'Descuentos', path: '/commercial/discount' },
          { name: 'Ventas', path: '/commercial/sales' }
      ]
+    },
+    {
+      name: 'Inventory',
+      expanded: false,
+      features: [
+        { name: 'Locations', path: '/inventory/location' }
+      ]
     }
   ]);
 

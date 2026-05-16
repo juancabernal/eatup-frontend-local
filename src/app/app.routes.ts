@@ -53,6 +53,13 @@ export const routes: Routes = [
          loadChildren: () =>
           import('./features/commercial/discount/discount.routes')
             .then(m => m.DISCOUNT_ROUTES)
+      },
+      {
+        path: 'inventory/location',
+        loadChildren: () =>
+          import('./features/inventory/location/location.routes').then(
+            m => m.LOCATION_ROUTES
+          )
       }
     ]
   },
