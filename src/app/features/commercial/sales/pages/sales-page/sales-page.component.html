@@ -21,16 +21,16 @@
 
     <article class="surface order-panel">
       <div class="order-head"><h2>🛒 Orden actual</h2><span>{{ cartItems.length }} recetas</span></div>
-      <div class="meta"><label>Vendedor</label><button class="btn btn-ghost" (click)="showSellerModal=true">{{ selectedSellerName || 'Seleccionar vendedor' }}</button></div>
-      <div class="meta"><label>Mesa</label><button class="btn btn-ghost" (click)="showTableModal=true">{{ selectedTableName || 'Seleccionar mesa' }}</button></div>
+      <div class="meta"><label>Vendedor</label><button class="selector-btn" type="button" (click)="showSellerModal=true" [attr.aria-label]="selectedSellerName || 'Seleccionar vendedor'">{{ selectedSellerName || 'Seleccionar vendedor' }}</button></div>
+      <div class="meta"><label>Mesa</label><button class="selector-btn" type="button" (click)="showTableModal=true" [attr.aria-label]="selectedTableName || 'Seleccionar mesa'">{{ selectedTableName || 'Seleccionar mesa' }}</button></div>
       <p class="muted">Sede configurada</p>
       <div class="cart-list">
         @for (i of cartItems; track i.recipeId) {
           <div class="cart-item">
             <div class="cart-top"><strong class="truncate">{{ i.recipeName }}</strong><span>{{ i.unitPrice | currency:'COP':'symbol':'1.0-0' }}</span></div>
             <div class="cart-actions">
-              <input class="qty" type="number" [ngModel]="i.quantity" (ngModelChange)="updateQty(i.recipeId,$event)" min="1" />
-              <button class="btn btn-soft" (click)="openComment(i)">💬 Comentario</button>
+              <input class="quantity-input" type="number" [ngModel]="i.quantity" (ngModelChange)="updateQty(i.recipeId,$event)" min="1" />
+              <button class="btn btn-comment" type="button" (click)="openComment(i)">💬 Comentario</button>
               <button class="btn btn-danger" (click)="removeItem(i.recipeId)">Eliminar</button>
             </div>
             @if (i.recipeLineComment && i.recipeLineComment !== 'Sin observaciones') { <span class="badge info">Con comentario</span> }

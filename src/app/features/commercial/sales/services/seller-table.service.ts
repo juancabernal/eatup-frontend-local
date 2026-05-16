@@ -15,12 +15,19 @@ export class SellerTableService {
   }
 
   getSellers(): Observable<Seller[]> {
-    const endpoints = [`${this.apiRoot}/commercial/api/v1/sellers`, `${this.env.apiUrl}/sellers`];
+    const endpoints = [
+      `${this.apiRoot}/comercialapi/v1/sellers?status=ACTIVE`,
+      `${this.apiRoot}/comercialapi/v1/sellers`,
+      `${this.env.apiUrl}/sellers`
+    ];
     return this.tryEndpoints<Seller>(endpoints, 'seller');
   }
 
   getTables(): Observable<RestaurantTable[]> {
+    const locationId = (window as any).ENV?.LOCATION_ID;
+    const baseTablesEndpoint = `${this.apiRoot}/commercial/api/v1/tables?canOpenNow=true`;
     const endpoints = [
+      locationId ? `${baseTablesEndpoint}&venueId=${encodeURIComponent(locationId)}` : baseTablesEndpoint,
       `${this.apiRoot}/commercial/api/v1/tables`,
       `${this.apiRoot}/commercial/api/v1/restaurant-tables`,
       `${this.apiRoot}/commercial/api/v1/table-sessions`,
