@@ -104,6 +104,111 @@
   color: var(--accent-hover);
 }
 
+.btn-update {
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+  color: var(--accent-text);
+}
+
+.btn-update:hover:not(:disabled) {
+/* Selectores de vendedor y mesa */
+.selector-btn:hover:not(:disabled) {
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
+  color: var(--accent-text);
+}
+
+/* Opciones de modales */
+.pick:hover {
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
+}
+
+/* Botón comentario */
+.btn-comment {
+  background: var(--comment-soft);
+  border: 1px solid var(--comment-border);
+  color: var(--comment-text);
+}
+
+.btn-comment:hover:not(:disabled) {
+  background: var(--comment-hover);
+  border-color: #c4b5fd;
+  color: #5b21b6;
+}
+
+/* Botón eliminar */
+.btn-danger {
+  background: var(--danger-soft);
+  border: 1px solid var(--danger-border);
+  color: var(--danger-text);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: var(--danger-hover);
+  border-color: #fda4af;
+  color: #9f1239;
+}
+
+/* Focus general de botones */
+.btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+/* Tabla ventas recientes */
+.sales-table tbody tr:hover {
+  background: var(--neutral-hover);
+}
+
+.sales-table tbody tr.active,
+.sales-table tbody tr.selected,
+.sales-table tbody tr.is-highlighted {
+  background: var(--accent-soft);
+}
+
+/* Badge warning: quitar café/naranja */
+.badge.warn {
+  background: var(--accent-soft-strong);
+  color: var(--accent-text);
+  border-color: var(--accent-border);
+}
+
+/* Filtros de recetas y ventas */
+.filters-card {
+  background: #f8fafc;
+  border: 1px solid #dbe3ef;
+}
+
+.filter-label {
+  color: var(--accent-text);
+}
+
+.filter-input,
+.filter-select {
+  border-color: #cbd5e1;
+  background: #ffffff;
+  color: #0f172a;
+}
+
+.filter-input:hover,
+.filter-select:hover {
+  border-color: var(--accent-border);
+}
+
+/* Botón limpiar filtros */
+.clear-filters-btn {
+  border: 1px solid var(--accent-border);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.clear-filters-btn:hover {
+  background: var(--accent-soft-strong);
+  border-color: var(--accent);
+  color: var(--accent-hover);
+}
+
 /* Selectores de vendedor y mesa */
 .selector-btn:hover:not(:disabled) {
   background: var(--accent-soft);
@@ -269,6 +374,112 @@
   box-shadow: none;
 }
 
+.btn-update:disabled,
+.btn-update:disabled:hover,
+.btn-update:disabled:active {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+  color: #94a3b8;
+  opacity: .8;
+
+/* Empty state */
+.empty-state {
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+/* Quitar naranjas restantes en selector */
+.selector-btn:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
+}
+
+.selector-btn:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--focus-ring);
+}
+
+/* Quitar naranjas restantes en input cantidad */
+.quantity-input:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--focus-ring);
+}
+
+/* Quitar naranjas restantes en input común */
+.input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+/* Quitar naranja/café de opciones */
+.pick:hover {
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
+}
+
+/* =========================================================
+   Disabled buttons: nunca cambiar color en hover
+   ========================================================= */
+
+.btn:disabled,
+.btn:disabled:hover,
+.btn:disabled:active,
+.btn-primary:disabled,
+.btn-primary:disabled:hover,
+.btn-primary:disabled:active {
+  background: #94c9c2;
+  color: #ffffff;
+  border-color: transparent;
+  opacity: 0.75;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn-soft:disabled,
+.btn-soft:disabled:hover,
+.btn-soft:disabled:active {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+  color: #94a3b8;
+  opacity: 0.85;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.update-sale-modal{width:min(760px,96vw);max-width:760px}
+.update-meta-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem;margin:.6rem 0}
+.meta-item{border:1px solid #e2e8f0;border-radius:12px;padding:.55rem .7rem;display:flex;flex-direction:column}
+.meta-item span{font-size:.78rem;color:#64748b}
+.update-line{display:grid;gap:.55rem}
+.update-line-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem}
+.update-total{margin-top:.7rem;display:flex;justify-content:space-between;align-items:center;border-top:1px solid #e2e8f0;padding-top:.55rem}
+
+.btn-comment:disabled,
+.btn-comment:disabled:hover,
+.btn-comment:disabled:active {
+  background: #ede9fe;
+  border-color: #ddd6fe;
+  color: #a78bfa;
+  opacity: 0.75;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn-danger:disabled,
+.btn-danger:disabled:hover,
+.btn-danger:disabled:active {
+  background: #fee2e2;
+  border-color: #fecaca;
+  color: #f87171;
+  opacity: 0.75;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
 .btn-comment:disabled,
 .btn-comment:disabled:hover,
 .btn-comment:disabled:active {

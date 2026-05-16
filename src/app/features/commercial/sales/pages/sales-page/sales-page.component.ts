@@ -34,8 +34,12 @@ export class SalesPageComponent implements OnInit {
   saleMaxTotal: number | null = null;
   selectedSellerId = ''; selectedSellerName = ''; selectedTableId = ''; selectedTableName = '';
   showCommentModal = false; showSellerModal = false; showTableModal = false; showDeleteModal = false;
+  showUpdateModal = false;
   showTraceModal = false; traceLoading = false; selectedTraceSaleId = '';
   selectedCartRecipeId = ''; modalComment = 'Sin observaciones'; deletingSaleId = ''; loading = false;
+  selectedSaleToUpdate: SaleResponse | null = null;
+  updateDraft: { sellerId: string; sellerName: string; tableId: string; tableName: string; locationId: string; details: CartItem[]; } | null = null;
+  isUpdatingSaleId: string | null = null;
   toasts: ToastMessage[] = [];
   isCreatingSale = false;
   salesPage = 1; salesPageSize = 5; salesPageSizeOptions = [5, 10, 20];
@@ -144,6 +148,45 @@ export class SalesPageComponent implements OnInit {
 
   tableAvailable(t: RestaurantTable) { const s = (t.status || '').toUpperCase(); if (t.available === true || t.canOpenNow === true || t.reserved === false || t.occupied === false || ['AVAILABLE', 'DISPONIBLE', 'FREE', 'LIBRE', 'ACTIVE'].includes(s)) return true; if (t.available === false || t.canOpenNow === false || t.reserved === true || t.occupied === true || ['OCCUPIED', 'OCUPADA', 'BUSY', 'IN_USE', 'INACTIVE'].includes(s)) return false; return false; }
   pickTable(t: RestaurantTable) { if (!this.tableAvailable(t)) return; this.selectedTableId = t.id; this.selectedTableName = this.tableDisplayName(t); this.showTableModal = false; }
+  openUpdateSaleModal(sale: SaleResponse) {
+    if (sale.status === 'CREATED') return;
+    const sellerName = this.sellers.find(s => s.id === sale.sellerId);
+    const tableName = this.tables.find(t => t.id === sale.tableId);
+    this.selectedSaleToUpdate = sale;
+    this.updateDraft = {
+      sellerId: sale.sellerId,
+      sellerName: sellerName ? this.sellerDisplayName(sellerName) : 'Vendedor sin nombre',
+      tableId: sale.tableId,
+      tableName: tableName ? this.tableDisplayName(tableName) : 'Mesa sin nombre',
+      locationId: sale.locationId || ((window as any).ENV?.LOCATION_ID || 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'),
+      details: sale.details.map(detail => ({ recipeId: detail.recipeId, recipeName: detail.lineDisplayName || this.recipeNameById(detail.recipeId), lineDisplayName: detail.lineDisplayName || this.recipeNameById(detail.recipeId), quantity: detail.quantity, unitPrice: detail.unitPrice, recipeLineComment: detail.recipeLineComment || 'Sin observaciones' }))
+    };
+    this.showUpdateModal = true;
+    this.cdr.markForCheck();
+  }
+  closeUpdateSaleModal() { this.showUpdateModal = false; this.selectedSaleToUpdate = null; this.updateDraft = null; this.cdr.markForCheck(); }
+  updateDraftQty(recipeId: string, qty: number) { if (!this.updateDraft) return; const q = Math.max(1, Number(qty) || 1); this.updateDraft = { ...this.updateDraft, details: this.updateDraft.details.map(i => i.recipeId === recipeId ? { ...i, quantity: q } : i) }; this.cdr.markForCheck(); }
+  updateDraftUnitPrice(recipeId: string, unitPrice: number) { if (!this.updateDraft) return; const p = Math.max(1, Number(unitPrice) || 1); this.updateDraft = { ...this.updateDraft, details: this.updateDraft.details.map(i => i.recipeId === recipeId ? { ...i, unitPrice: p } : i) }; this.cdr.markForCheck(); }
+  updateDraftComment(recipeId: string, value: string) { if (!this.updateDraft) return; this.updateDraft = { ...this.updateDraft, details: this.updateDraft.details.map(i => i.recipeId === recipeId ? { ...i, recipeLineComment: value } : i) }; this.cdr.markForCheck(); }
+  removeUpdateDraftItem(recipeId: string) { if (!this.updateDraft) return; this.updateDraft = { ...this.updateDraft, details: this.updateDraft.details.filter(i => i.recipeId !== recipeId) }; this.cdr.markForCheck(); }
+  updateDraftTotal() { return (this.updateDraft?.details ?? []).reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0); }
+  submitSaleUpdate() {
+    if (!this.selectedSaleToUpdate || !this.updateDraft || this.isUpdatingSaleId) return;
+    if (!this.validateUpdateDraft()) return;
+    const payload = { sellerId: this.updateDraft.sellerId, locationId: this.updateDraft.locationId, tableId: this.updateDraft.tableId, details: this.updateDraft.details.map(item => ({ recipeId: item.recipeId, quantity: item.quantity, unitPrice: item.unitPrice, recipeLineComment: item.recipeLineComment?.trim() || 'Sin observaciones', lineDisplayName: item.lineDisplayName || item.recipeName })) };
+    this.isUpdatingSaleId = this.selectedSaleToUpdate.id;
+    this.cdr.markForCheck();
+    this.salesService.updateSale(this.selectedSaleToUpdate.id, payload)
+      .pipe(finalize(() => { this.isUpdatingSaleId = null; this.cdr.markForCheck(); }))
+      .subscribe({
+        next: (response) => {
+          this.showToast('success', response?.message || 'Actualización enviada a procesamiento correctamente.');
+          this.closeUpdateSaleModal();
+          this.refreshSales(true);
+        },
+        error: () => this.showToast('error', 'No se pudo actualizar la venta.')
+      });
+  }
   saleLabel(id: string) { return `#${id.slice(-6).toUpperCase()}`; }
   recipeNameById(id: string) { return this.recipes.find(r => r.id === id)?.name ?? 'Receta no encontrada'; }
   sellerDisplayName(s: Seller) { return s.fullName || s.name || `${s.firstName ?? ''} ${s.lastName ?? ''}`.trim() || s.email || s.identificationNumber || (s as any).identification_number || s.phone || 'Vendedor sin nombre'; }
@@ -218,6 +261,14 @@ export class SalesPageComponent implements OnInit {
     this.saleMinTotal = null;
     this.saleMaxTotal = null;
     this.applySaleFilters();
+  }
+  private validateUpdateDraft() {
+    if (!this.updateDraft?.sellerId) { this.showToast('error', 'Debes seleccionar un vendedor.'); return false; }
+    if (!this.updateDraft?.tableId) { this.showToast('error', 'Debes seleccionar una mesa disponible.'); return false; }
+    if (!this.updateDraft.details.length) { this.showToast('error', 'La venta debe tener al menos una receta.'); return false; }
+    if (this.updateDraft.details.some(item => item.quantity <= 0)) { this.showToast('error', 'La cantidad debe ser mayor que cero.'); return false; }
+    if (this.updateDraft.details.some(item => item.unitPrice <= 0)) { this.showToast('error', 'El precio unitario debe ser mayor que cero.'); return false; }
+    return true;
   }
 
 
