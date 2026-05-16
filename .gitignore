@@ -47,4 +47,4 @@ Thumbs.db
 .env.development
 .env.production
 src/app/core/config/env.config.ts
-scripts/generate-env.js
+package-lock.json

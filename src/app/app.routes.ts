@@ -61,7 +61,16 @@ export const routes: Routes = [
           import('./features/commercial/tables/tables.routes').then(
             m => m.TABLES_ROUTES
           )
+      },
+
+      {
+        path: 'inventory/location',
+        loadChildren: () =>
+          import('./features/inventory/location/location.routes').then(
+            m => m.LOCATION_ROUTES
+          )
       }
+
     ]
   },
   {
