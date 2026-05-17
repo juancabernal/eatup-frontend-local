@@ -16,12 +16,13 @@
     "module": "preserve",
     "baseUrl": ".",
     "paths": {
-      "@config/*":   ["src/app/core/config/*"],
-      "@core/*":     ["src/app/core/*"],
-      "@shared/*":   ["src/app/shared/*"],
-      "@features/*": ["src/app/features/*"],
-      "@payment/*":  ["src/app/features/payment/*"],
-      "@commercial/*":  ["src/app/features/commercial/*"]
+      "@config/*":      ["src/app/core/config/*"],
+      "@core/*":        ["src/app/core/*"],
+      "@shared/*":      ["src/app/shared/*"],
+      "@features/*":    ["src/app/features/*"],
+      "@payment/*":     ["src/app/features/payment/*"],
+      "@commercial/*":  ["src/app/features/commercial/*"],
+      "@user/*":        ["src/app/features/user/*"]
     }
   },
   "angularCompilerOptions": {

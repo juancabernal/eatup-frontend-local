@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { LayoutComponent } from './shared/components/layout/layout.component';
+import { authGuard, guestGuard } from './core/guards/auth.guard';
 
 /**
  * Rutas principales de la aplicación.
@@ -11,8 +12,15 @@ import { LayoutComponent } from './shared/components/layout/layout.component';
  */
 export const routes: Routes = [
   {
+    path: 'login',
+    canActivate: [guestGuard],
+    loadChildren: () =>
+      import('./features/user/user.routes').then(m => m.USER_ROUTES)
+  },
+  {
     path: '',
     component: LayoutComponent,
+    canActivate: [authGuard],
     children: [
       {
         path: '',
