@@ -1,0 +1,619 @@
+<div class="invoice-page">
+  <header class="page-header">
+    <div>
+      <h1>Facturacion</h1>
+      <p>Selecciona una venta existente y genera la factura sin alterar la venta original.</p>
+    </div>
+    <button class="btn btn-secondary" type="button" (click)="loadSales()" [disabled]="loadingSales() || loadingInvoices()">
+      {{ loadingSales() || loadingInvoices() ? 'Actualizando...' : 'Actualizar ventas y facturas' }}
+    </button>
+  </header>
+
+  @if (successMessage()) {
+    <section class="alert success">
+      <div>
+        <strong>Factura creada exitosamente</strong>
+        <p>{{ successMessage() }}</p>
+      </div>
+      <div class="alert-tags">
+        @if (selectedInvoiceIdForActions()) {
+          <span class="chip">Invoice ID: {{ selectedInvoiceIdForActions() }}</span>
+        }
+        <span class="chip success">
+          {{ selectedInvoiceNumberForActions() || 'Consecutivo generado por backend' }}
+        </span>
+        @if (selectedInvoiceStatusForActions()) {
+          <span class="chip" [ngClass]="invoiceStatusClass(selectedInvoiceStatusForActions())">
+            {{ invoiceStatusLabel(selectedInvoiceStatusForActions()) }}
+          </span>
+        }
+      </div>
+      @if (selectedInvoiceIdForActions()) {
+        <div class="inline-actions">
+          <button class="btn btn-ghost btn-sm" type="button" (click)="copyInvoiceId(selectedInvoiceIdForActions())">
+            Copiar invoiceId
+          </button>
+          @if (selectedInvoiceLocationIdForActions()) {
+            <button
+              class="btn btn-secondary btn-sm"
+              type="button"
+              (click)="goToCashReceipt(selectedInvoiceIdForActions(), selectedInvoiceLocationIdForActions())">
+              Ir a Recibo de Caja
+            </button>
+          }
+        </div>
+      }
+    </section>
+  }
+
+  @if (copyFeedback()) {
+    <section class="alert info">
+      <strong>Portapapeles</strong>
+      <p>{{ copyFeedback() }}</p>
+    </section>
+  }
+
+  @if (salesError()) {
+    <section class="alert error">
+      <strong>Error cargando ventas</strong>
+      <p>{{ salesError() }}</p>
+    </section>
+  }
+
+  @if (invoicesError()) {
+    <section class="alert warn">
+      <strong>Error cargando facturas</strong>
+      <p>{{ invoicesError() }}</p>
+    </section>
+  }
+
+  @if (discountError()) {
+    <section class="alert warn">
+      <strong>Descuentos no disponibles</strong>
+      <p>{{ discountError() }}</p>
+    </section>
+  }
+
+  @if (submitErrorState(); as submitError) {
+    <section class="alert error">
+      <div>
+        <strong>Error al crear factura</strong>
+        <p>{{ submitError.message }}</p>
+      </div>
+      <div class="alert-tags">
+        @if (submitError.status) {
+          <span class="chip">HTTP {{ submitError.status }}</span>
+        }
+        @if (submitError.errorCode) {
+          <span class="chip">{{ submitError.errorCode }}</span>
+        }
+      </div>
+    </section>
+  }
+
+  <section class="content-grid">
+    <article class="panel">
+      <div class="panel-head">
+        <div>
+          <h2>Ventas disponibles</h2>
+          <p>{{ saleCountLabel() }}</p>
+        </div>
+        <div class="panel-meta">
+          <span class="chip">
+            {{ loadingInvoices() ? 'Consultando facturas...' : invoicesPage().content.length + ' factura(s) cargada(s)' }}
+          </span>
+        </div>
+      </div>
+
+      <label class="field search-field">
+        <span>Buscar venta</span>
+        <input
+          class="input"
+          type="text"
+          [ngModel]="saleQuery()"
+          (ngModelChange)="updateSaleQuery($event)"
+          placeholder="Id, estado, mesa, factura o nombre del item" />
+      </label>
+
+      @if (loadingSales()) {
+        <div class="state-card">
+          <div class="spinner"></div>
+          <strong>Cargando ventas</strong>
+          <p>Consultando ventas disponibles para facturacion.</p>
+        </div>
+      } @else if (filteredSales().length === 0) {
+        <div class="state-card">
+          <strong>Sin resultados</strong>
+          <p>No hay ventas visibles con los filtros actuales.</p>
+        </div>
+      } @else {
+        <div class="sales-list">
+          @for (sale of filteredSales(); track sale.id) {
+            <article
+              class="sale-card"
+              tabindex="0"
+              [class.selected]="selectedSaleId() === sale.id"
+              (click)="selectSale(sale)"
+              (keydown.enter)="selectSale(sale)"
+              (keydown.space)="selectSale(sale); $event.preventDefault()">
+              <div class="sale-card-head">
+                <div>
+                  <strong>Venta {{ saleLabel(sale.id) }}</strong>
+                  <small class="muted mono">{{ sale.id }}</small>
+                </div>
+                <div class="sale-badges">
+                  <span class="badge" [ngClass]="saleStatusClass(sale.status)">
+                    {{ saleStatusLabel(sale.status) }}
+                  </span>
+                  @if (saleHasActiveInvoice(sale.id)) {
+                    <span class="badge ok">Facturada</span>
+                  }
+                </div>
+              </div>
+
+              <div class="sale-meta-grid">
+                <div>
+                  <span class="meta-label">Mesa</span>
+                  <span>{{ saleTableLabel(sale.tableId) }}</span>
+                </div>
+                <div>
+                  <span class="meta-label">Total</span>
+                  <span>{{ sale.totalAmount | currency:'COP':'symbol':'1.0-0' }}</span>
+                </div>
+                <div>
+                  <span class="meta-label">Items</span>
+                  <span>{{ saleItemsLabel(sale) }}</span>
+                </div>
+                <div>
+                  <span class="meta-label">Fecha</span>
+                  <span>{{ (sale.modifiedDate || sale.createdDate || '') | date:'dd/MM/yyyy HH:mm' }}</span>
+                </div>
+              </div>
+
+              @if (saleInvoice(sale.id); as saleInvoice) {
+                <div class="invoice-record" [class.blocking]="saleHasActiveInvoice(sale.id)">
+                  <div>
+                    <span class="meta-label">
+                      {{ saleHasActiveInvoice(sale.id) ? 'Factura activa' : 'Factura existente' }}
+                    </span>
+                    <strong>{{ saleInvoice.invoiceNumber || 'Sin consecutivo' }}</strong>
+                    <small class="muted mono">{{ saleInvoice.invoiceId }}</small>
+                  </div>
+                  <div class="sale-card-actions">
+                    <span class="badge" [ngClass]="invoiceStatusClass(saleInvoice.status)">
+                      {{ invoiceStatusLabel(saleInvoice.status) }}
+                    </span>
+                    <button
+                      class="btn btn-ghost btn-sm"
+                      type="button"
+                      (click)="copyInvoiceId(saleInvoice.invoiceId, $event)">
+                      Copiar invoiceId
+                    </button>
+                  </div>
+                </div>
+              }
+            </article>
+          }
+        </div>
+      }
+    </article>
+
+    <article class="panel detail-panel">
+      @if (selectedSale(); as sale) {
+        @if (invoiceRequestPreview(); as request) {
+          <section class="preview-card">
+            <div class="preview-head">
+              <div>
+                <h2>Vista previa de factura</h2>
+                <p>Snapshot de facturacion construido desde la venta seleccionada.</p>
+              </div>
+              <span class="badge" [ngClass]="previewProcessTone()">{{ previewProcessLabel() }}</span>
+            </div>
+
+            <div class="preview-grid">
+              <div>
+                <span class="meta-label">Venta seleccionada</span>
+                <strong>Venta {{ saleLabel(request.salesId) }}</strong>
+                <small class="muted mono">{{ request.salesId }}</small>
+              </div>
+              <div>
+                <span class="meta-label">Consecutivo</span>
+                <strong>{{ previewInvoiceNumber() }}</strong>
+              </div>
+              <div>
+                <span class="meta-label">Nombre de sede</span>
+                <strong>{{ request.locationName || 'Pendiente' }}</strong>
+              </div>
+              <div>
+                <span class="meta-label">Location ID</span>
+                <strong class="mono">{{ request.locationId }}</strong>
+              </div>
+              <div>
+                <span class="meta-label">Table ID</span>
+                <strong class="mono">{{ request.tableId || 'Sin mesa' }}</strong>
+              </div>
+              <div>
+                <span class="meta-label">Mesa consultada</span>
+                <strong>
+                  {{ tableLookup().table ? tableNumberLabel(tableLookup().table) : 'Pendiente de consulta' }}
+                </strong>
+              </div>
+              <div>
+                <span class="meta-label">Sesion de mesa</span>
+                <strong class="mono">{{ request.tableSessionId || 'Sin sesion' }}</strong>
+              </div>
+              <div>
+                <span class="meta-label">Cliente</span>
+                <strong>{{ previewCustomerLabel() }}</strong>
+              </div>
+              <div>
+                <span class="meta-label">Descuento</span>
+                <strong>{{ previewDiscountLabel() }}</strong>
+              </div>
+              <div>
+                <span class="meta-label">Fecha venta</span>
+                <strong>{{ selectedSaleDate() ? (selectedSaleDate() | date:'dd/MM/yyyy HH:mm') : 'Sin fecha' }}</strong>
+              </div>
+              @if (selectedSaleInvoice(); as existingInvoice) {
+                <div>
+                  <span class="meta-label">Invoice ID</span>
+                  <strong class="mono">{{ existingInvoice.invoiceId }}</strong>
+                </div>
+                <div>
+                  <span class="meta-label">Estado factura</span>
+                  <strong>{{ invoiceStatusLabel(existingInvoice.status) }}</strong>
+                </div>
+              }
+            </div>
+
+            <div class="table-shell compact">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Item</th>
+                    <th>Cantidad</th>
+                    <th>Precio unitario</th>
+                    <th>Subtotal</th>
+                    <th>Comentario</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (detail of invoiceDetails(); track detail.recipeId + '-' + $index) {
+                    <tr>
+                      <td>
+                        <strong>{{ detail.itemName || 'Item sin nombre' }}</strong>
+                        <small class="muted mono">{{ detail.recipeId || 'Sin recipeId' }}</small>
+                      </td>
+                      <td>{{ detail.quantity }}</td>
+                      <td>{{ detail.unitPrice | currency:'COP':'symbol':'1.0-0' }}</td>
+                      <td>{{ detail.subtotal | currency:'COP':'symbol':'1.0-0' }}</td>
+                      <td>{{ detail.comment || 'Sin comentario' }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+
+            <div class="totals-list">
+              <div>
+                <span>Subtotal</span>
+                <strong>{{ baseSubtotal() | currency:'COP':'symbol':'1.0-0' }}</strong>
+              </div>
+              <div>
+                <span>Descuento</span>
+                <strong>{{ discountAmount() | currency:'COP':'symbol':'1.0-0' }}</strong>
+              </div>
+              <div>
+                <span>Impuesto</span>
+                <strong>{{ 0 | currency:'COP':'symbol':'1.0-0' }}</strong>
+              </div>
+              <div class="grand-total">
+                <span>Total factura</span>
+                <strong>{{ totalAmount() | currency:'COP':'symbol':'1.0-0' }}</strong>
+              </div>
+            </div>
+          </section>
+
+          @if (selectedSaleInvoice(); as existingInvoice) {
+            <section class="alert" [ngClass]="selectedActiveInvoice() ? 'success' : 'warn'">
+              <div>
+                <strong>
+                  {{ selectedActiveInvoice() ? 'Esta venta ya tiene una factura activa' : 'Esta venta ya tiene una factura registrada' }}
+                </strong>
+                <p>
+                  {{ selectedActiveInvoice() ? 'No se puede crear otra factura mientras la actual siga activa.' : 'La factura existente no esta en un estado bloqueante y solo se muestra para referencia.' }}
+                </p>
+              </div>
+              <div class="alert-tags">
+                <span class="chip">invoiceId: {{ existingInvoice.invoiceId }}</span>
+                <span class="chip">{{ existingInvoice.invoiceNumber || 'Sin consecutivo' }}</span>
+                <span class="chip" [ngClass]="invoiceStatusClass(existingInvoice.status)">
+                  {{ invoiceStatusLabel(existingInvoice.status) }}
+                </span>
+              </div>
+              <div class="inline-actions">
+                <button class="btn btn-ghost btn-sm" type="button" (click)="copyInvoiceId(existingInvoice.invoiceId)">
+                  Copiar invoiceId
+                </button>
+                <button
+                  class="btn btn-secondary btn-sm"
+                  type="button"
+                  (click)="goToCashReceipt(existingInvoice.invoiceId, existingInvoice.locationId)">
+                  Ir a Recibo de Caja
+                </button>
+              </div>
+            </section>
+          }
+
+          <section class="section">
+            <div class="section-head">
+              <div>
+                <h3>Datos de la factura</h3>
+                <p>La venta y sus items permanecen en solo lectura; aqui solo completas el contexto extra.</p>
+              </div>
+            </div>
+
+            @if (selectedTableId()) {
+              <div class="context-card">
+                <div class="context-card-head">
+                  <div>
+                    <h4>Consulta de mesa</h4>
+                    <p>Usa el servicio existente de mesas para traer datos adicionales y la sesion activa.</p>
+                  </div>
+                  <button
+                    class="btn btn-secondary"
+                    type="button"
+                    (click)="loadTableContext()"
+                    [disabled]="tableLookup().loading">
+                    {{ tableLookup().loading ? 'Consultando...' : 'Consultar mesa' }}
+                  </button>
+                </div>
+
+                <div class="context-grid">
+                  <div>
+                    <span class="meta-label">Table ID</span>
+                    <strong class="mono">{{ selectedTableId() }}</strong>
+                  </div>
+                  <div>
+                    <span class="meta-label">Numero de mesa</span>
+                    <strong>{{ tableNumberLabel(tableLookup().table) }}</strong>
+                  </div>
+                  <div>
+                    <span class="meta-label">Estado</span>
+                    <strong>{{ tableStatusLabel(tableLookup().table) }}</strong>
+                  </div>
+                  <div>
+                    <span class="meta-label">Ubicacion</span>
+                    <strong>{{ tableLookup().table?.location || 'No disponible' }}</strong>
+                  </div>
+                  <div>
+                    <span class="meta-label">Sesion activa</span>
+                    <strong class="mono">{{ activeTableSession()?.id || 'Sin sesion activa' }}</strong>
+                  </div>
+                  <div>
+                    <span class="meta-label">Invitados</span>
+                    <strong>{{ tableGuestCountLabel(activeTableSession()) }}</strong>
+                  </div>
+                </div>
+
+                @if (tableLookup().notice) {
+                  <p class="context-note">{{ tableLookup().notice }}</p>
+                }
+              </div>
+            } @else {
+              <div class="context-card subtle">
+                <h4>Consulta de mesa</h4>
+                <p>La venta no trae `tableId`; la factura no se bloquea y se enviara `tableId: null`.</p>
+              </div>
+            }
+
+            <div class="form-grid">
+              <label class="field">
+                <span>Nombre de sede *</span>
+                <input
+                  class="input"
+                  type="text"
+                  [ngModel]="form().locationName"
+                  (ngModelChange)="updateField('locationName', $event)"
+                  placeholder="Ej. EatUp Centro" />
+              </label>
+
+              <label class="field">
+                <span>Sesion de mesa</span>
+                <input
+                  class="input mono"
+                  type="text"
+                  [ngModel]="form().tableSessionId"
+                  (ngModelChange)="updateField('tableSessionId', $event)"
+                  placeholder="UUID de la sesion o vacio" />
+                <small class="field-hint">
+                  {{ activeTableSession()?.id ? 'Autocompletada desde la sesion activa; puedes ajustarla si hace falta.' : 'Campo manual y opcional si la consulta de mesas no trae sesion activa.' }}
+                </small>
+              </label>
+
+              <label class="field">
+                <span>Customer ID</span>
+                <input
+                  class="input mono"
+                  type="text"
+                  [ngModel]="form().customerId"
+                  (ngModelChange)="updateField('customerId', $event)"
+                  [disabled]="hasCustomerFromSale()"
+                  [placeholder]="hasCustomerFromSale() ? 'Tomado de la venta' : 'UUID opcional del cliente'" />
+                <small class="field-hint">{{ customerInputHint() }}</small>
+              </label>
+
+              <label class="field">
+                <span>Descuento</span>
+                <select
+                  class="input"
+                  [ngModel]="selectedDiscountValue()"
+                  (ngModelChange)="selectDiscount($event)"
+                  [disabled]="loadingDiscounts()">
+                  <option [ngValue]="noDiscountValue">Sin descuento</option>
+                  @for (discount of availableDiscounts(); track discount.id) {
+                    <option [ngValue]="discount.id">
+                      {{ discount.description }} ({{ discount.percentage }}%)
+                    </option>
+                  }
+                </select>
+              </label>
+
+              <label class="field">
+                <span>Descuento (%)</span>
+                <input class="input" type="number" [ngModel]="normalizedDiscountPercentage()" readonly />
+              </label>
+
+              <label class="field field-full">
+                <span>Descripcion del descuento</span>
+                <textarea
+                  class="input textarea"
+                  [ngModel]="form().discountDescription"
+                  (ngModelChange)="updateField('discountDescription', $event)"
+                  [disabled]="selectedDiscountValue() === noDiscountValue"
+                  placeholder="Detalle adicional del descuento"></textarea>
+              </label>
+            </div>
+          </section>
+
+          <section class="section">
+            <div class="section-head">
+              <div>
+                <h3>Items de la venta</h3>
+                <p>Los detalles se muestran en solo lectura y salen directamente de la venta seleccionada.</p>
+              </div>
+              <span class="chip">{{ invoiceDetails().length }} item(s)</span>
+            </div>
+
+            <div class="table-shell">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Item</th>
+                    <th>Cantidad</th>
+                    <th>Precio unitario</th>
+                    <th>Subtotal</th>
+                    <th>Comentario</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (detail of invoiceDetails(); track detail.recipeId + '-' + $index) {
+                    <tr>
+                      <td>
+                        <strong>{{ detail.itemName || 'Item sin nombre' }}</strong>
+                        <small class="muted mono">{{ detail.recipeId || 'Sin recipeId' }}</small>
+                      </td>
+                      <td>{{ detail.quantity }}</td>
+                      <td>{{ detail.unitPrice | currency:'COP':'symbol':'1.0-0' }}</td>
+                      <td>{{ detail.subtotal | currency:'COP':'symbol':'1.0-0' }}</td>
+                      <td>{{ detail.comment || 'Sin comentario' }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="totals-grid">
+            <article class="summary-card">
+              <span>Subtotal</span>
+              <strong>{{ baseSubtotal() | currency:'COP':'symbol':'1.0-0' }}</strong>
+            </article>
+            <article class="summary-card">
+              <span>Descuento</span>
+              <strong>{{ discountAmount() | currency:'COP':'symbol':'1.0-0' }}</strong>
+            </article>
+            <article class="summary-card">
+              <span>Impuesto</span>
+              <strong>{{ 0 | currency:'COP':'symbol':'1.0-0' }}</strong>
+            </article>
+            <article class="summary-card accent">
+              <span>Total factura</span>
+              <strong>{{ totalAmount() | currency:'COP':'symbol':'1.0-0' }}</strong>
+            </article>
+          </section>
+
+          @if (warnings().length > 0) {
+            <section class="alert warn">
+              <strong>Advertencias</strong>
+              <ul class="message-list">
+                @for (warning of warnings(); track warning) {
+                  <li>{{ warning }}</li>
+                }
+              </ul>
+            </section>
+          }
+
+          @if (validationErrors().length > 0) {
+            <section class="alert error">
+              <strong>Validaciones pendientes</strong>
+              <ul class="message-list">
+                @for (error of validationErrors(); track error) {
+                  <li>{{ error }}</li>
+                }
+              </ul>
+            </section>
+          }
+
+          <section class="section debug-section">
+            <div class="section-head">
+              <div>
+                <h3>Depuracion del request</h3>
+                <p>El payload visible abajo es exactamente el que se prepara para `POST /locations/:locationId/invoices`.</p>
+              </div>
+            </div>
+
+            <div class="debug-grid">
+              <article class="debug-card">
+                <span class="meta-label">
+                  {{ submitErrorState() ? 'Ultimo payload enviado' : 'Payload listo para enviar' }}
+                </span>
+                <pre>{{ payloadPreviewText() }}</pre>
+              </article>
+
+              @if (submitErrorState(); as submitError) {
+                <article class="debug-card error-surface">
+                  <span class="meta-label">Respuesta del backend</span>
+                  <div class="debug-meta-grid">
+                    <div>
+                      <span class="meta-label">Mensaje</span>
+                      <strong>{{ submitError.message }}</strong>
+                    </div>
+                    <div>
+                      <span class="meta-label">Status HTTP</span>
+                      <strong>{{ submitError.status || 'Sin status' }}</strong>
+                    </div>
+                    <div>
+                      <span class="meta-label">Error code</span>
+                      <strong>{{ submitError.errorCode || 'Sin errorCode' }}</strong>
+                    </div>
+                  </div>
+
+                  @if (submitErrorBackendBodyText()) {
+                    <pre>{{ submitErrorBackendBodyText() }}</pre>
+                  }
+                </article>
+              }
+            </div>
+          </section>
+
+          <footer class="actions">
+            <button class="btn btn-ghost" type="button" (click)="clearSelection()">Limpiar seleccion</button>
+            <button
+              class="btn btn-primary"
+              type="button"
+              [disabled]="creatingInvoice() || validationErrors().length > 0 || isSelectedSaleLocked()"
+              (click)="createInvoice()">
+              {{ creatingInvoice() ? 'Creando factura...' : 'Crear factura' }}
+            </button>
+          </footer>
+        }
+      } @else {
+        <div class="state-card empty-detail">
+          <strong>Sin venta seleccionada</strong>
+          <p>Selecciona una venta para revisar su snapshot de factura y completar los datos faltantes.</p>
+        </div>
+      }
+    </article>
+  </section>
+</div>

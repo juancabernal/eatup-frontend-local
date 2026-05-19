@@ -235,6 +235,7 @@ export class LayoutComponent {
       expanded: false,
       features: [
         { name: 'Cash Receipt', path: '/payment/cashreceipt' },
+        { name: 'Facturas', path: '/payment/invoice' },
         { name: 'Payment Method', path: '/payment/paymentmethod' }
       ]
     },
