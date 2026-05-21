@@ -23,14 +23,18 @@ export interface Page<T> {
 export class PurchaseService {
 
   private baseUrl(locationId: string): string {
-  return `${ENV.apiUrl}/api/v1/locations/${locationId}/purchases`;
-}
+    return `${ENV.apiUrl}/api/v1/locations/${locationId}/purchases`;
+  }
 
   constructor(private http: HttpClient) {}
 
   getPurchases(
     locationId: string,
     status?: PurchaseStatus,
+    orderNumber?: string,
+    providerId?: string,
+    startDate?: string,
+    endDate?: string,
     page = 0,
     size = 10
   ): Observable<Page<PurchaseResponse>> {
@@ -38,31 +42,25 @@ export class PurchaseService {
       .set('page', page)
       .set('size', size);
 
-    if (status) {
-      params = params.set('status', status);
-    }
+    if (status)      params = params.set('status', status);
+    if (orderNumber) params = params.set('orderNumber', orderNumber);
+    if (providerId)  params = params.set('providerId', providerId);
+    if (startDate)   params = params.set('startDate', startDate);
+    if (endDate)     params = params.set('endDate', endDate);
 
     return this.http.get<Page<PurchaseResponse>>(
       this.baseUrl(locationId), { params }
     );
   }
 
-  getPurchaseById(
-    locationId: string,
-    purchaseId: string
-  ): Observable<PurchaseResponse> {
+  getPurchaseById(locationId: string, purchaseId: string): Observable<PurchaseResponse> {
     return this.http.get<PurchaseResponse>(
       `${this.baseUrl(locationId)}/${purchaseId}`
     );
   }
 
-  createPurchase(
-    locationId: string,
-    request: CreatePurchaseRequest
-  ): Observable<PurchaseResponse> {
-    return this.http.post<PurchaseResponse>(
-      this.baseUrl(locationId), request
-    );
+  createPurchase(locationId: string, request: CreatePurchaseRequest): Observable<PurchaseResponse> {
+    return this.http.post<PurchaseResponse>(this.baseUrl(locationId), request);
   }
 
   updatePurchase(
@@ -85,10 +83,7 @@ export class PurchaseService {
     );
   }
 
-  deletePurchase(
-    locationId: string,
-    purchaseId: string
-  ): Observable<void> {
+  deletePurchase(locationId: string, purchaseId: string): Observable<void> {
     return this.http.delete<void>(
       `${this.baseUrl(locationId)}/${purchaseId}`
     );

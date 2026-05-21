@@ -1,7 +1,8 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { ENV } from '@config/env.config';
 import { ProviderService, ProviderDTO } from '../../services/provider.service';
 
@@ -15,8 +16,8 @@ import { ProviderService, ProviderDTO } from '../../services/provider.service';
       <header class="page-header">
         <div>
           <button class="btn-link" (click)="goBack()">← Volver</button>
-          <h1>Exportar PDF — Metabase</h1>
-          <p>Configura los filtros y abre el reporte en Metabase</p>
+          <h1>Exportar Compras</h1>
+          <p>Aplica los filtros y descarga el PDF directamente.</p>
         </div>
       </header>
 
@@ -24,17 +25,14 @@ import { ProviderService, ProviderDTO } from '../../services/provider.service';
         <div class="section-title">Filtros del reporte</div>
 
         <div class="filters-grid">
-
           <div class="field">
             <label>Fecha inicio</label>
-            <input type="date" [(ngModel)]="startDate" />
+            <input type="date" [(ngModel)]="startDate" [max]="today" (ngModelChange)="onStartDateChange()" />
           </div>
-
           <div class="field">
             <label>Fecha fin</label>
-            <input type="date" [(ngModel)]="endDate" />
+            <input type="date" [(ngModel)]="endDate" [min]="startDate || undefined" [max]="today" />
           </div>
-
           <div class="field">
             <label>Estado</label>
             <select [(ngModel)]="status">
@@ -45,7 +43,6 @@ import { ProviderService, ProviderDTO } from '../../services/provider.service';
               <option value="CANCELLED">CANCELADA</option>
             </select>
           </div>
-
           <div class="field">
             <label>Proveedor</label>
             <select [(ngModel)]="providerId">
@@ -55,26 +52,17 @@ import { ProviderService, ProviderDTO } from '../../services/provider.service';
               }
             </select>
           </div>
-
         </div>
 
-        @if (!metabaseUrl) {
-          <div class="alert-warning">
-            La URL de Metabase no está configurada. Agrega
-            <code>METABASE_URL</code> en tu archivo <code>.env.development</code>.
-          </div>
+        @if (error()) {
+          <div class="alert-warning">{{ error() }}</div>
         }
 
         <div class="form-actions">
-          <button
-            class="btn-primary"
-            (click)="openMetabase()"
-            [disabled]="!metabaseUrl"
-          >
-            Abrir reporte en Metabase
+          <button class="btn-primary" (click)="downloadPdf()" [disabled]="loading()">
+            {{ loading() ? 'Generando PDF...' : '⬇ Descargar PDF' }}
           </button>
         </div>
-
       </section>
 
     </div>
@@ -88,34 +76,57 @@ export class PurchaseExportPageComponent implements OnInit {
   status = '';
   providerId = '';
   providers: ProviderDTO[] = [];
+  loading = signal(false);
+  error = signal('');
+  today = new Date().toISOString().split('T')[0];
 
-  // Lee la URL base de Metabase desde el entorno
-  metabaseUrl = (ENV as any).metabaseUrl ?? '';
+  private locationId = ENV.locationId;
 
   constructor(
+    private http: HttpClient,
     private providerService: ProviderService,
     private router: Router
   ) {}
 
   ngOnInit(): void {
-    this.providerService
-      .getActiveProviders()
-      .subscribe(data => this.providers = data);
+    this.providerService.getActiveProviders().subscribe(data => this.providers = data);
   }
 
-  openMetabase(): void {
-    if (!this.metabaseUrl) return;
-
-    const base = this.metabaseUrl.replace(/\/$/, '');
-    const url = new URL(base);
-
-    if (this.startDate) url.searchParams.set('startDate', this.startDate);
-    if (this.endDate)   url.searchParams.set('endDate', this.endDate);
-    if (this.status)    url.searchParams.set('status', this.status);
-    if (this.providerId) url.searchParams.set('providerId', this.providerId);
-
-    window.open(url.toString(), '_blank');
+  onStartDateChange(): void {
+    if (this.endDate && this.startDate && this.endDate < this.startDate) {
+      this.endDate = '';
+    }
   }
+
+  downloadPdf(): void {
+    this.error.set('');
+    this.loading.set(true);
+
+    let params = new HttpParams();
+    if (this.status)     params = params.set('status', this.status);
+    if (this.providerId) params = params.set('providerId', this.providerId);
+    if (this.startDate)  params = params.set('startDate', this.startDate);
+    if (this.endDate)    params = params.set('endDate', this.endDate);
+
+    const url = `${ENV.apiUrl}/api/v1/locations/${this.locationId}/purchases/export/pdf`;
+
+    this.http.get(url, { params, responseType: 'blob' }).subscribe({
+      next: (blob) => {
+        const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `compras-${date}.pdf`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+        this.loading.set(false);
+      },
+      error: () => {
+        this.error.set('No se pudo generar el PDF. Verifica los filtros e intenta de nuevo.');
+        this.loading.set(false);
+      }
+    });
+  }
+
   goBack(): void {
     this.router.navigate(['/commercial/purchases']);
   }

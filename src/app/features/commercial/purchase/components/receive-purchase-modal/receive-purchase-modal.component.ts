@@ -33,7 +33,7 @@ import { PurchaseResponse } from '../../models/purchase.model';
               <table class="table">
                 <thead>
                   <tr>
-                    <th>ID Producto</th>
+                    <th>Producto</th>
                     <th>Cantidad</th>
                     <th>Precio Unitario</th>
                     <th>Subtotal</th>
@@ -42,14 +42,14 @@ import { PurchaseResponse } from '../../models/purchase.model';
                 <tbody>
                   @for (item of purchase.items; track item.productId) {
                     <tr>
-                      <td>{{ item.productId }}</td>
+                      <td>{{ getProductName(item.productId) }}</td>
                       <td>{{ item.quantity }}</td>
                       <td>$ {{ item.unitPrice.toFixed(2) }}</td>
                       <td>$ {{ item.subtotal.toFixed(2) }}</td>
                     </tr>
                   }
                 </tbody>
-              </table> 
+              </table>
             </div>
 
             <div class="alert-info">
@@ -77,8 +77,13 @@ export class ReceivePurchaseModalComponent {
 
   @Input() open = false;
   @Input() purchase: PurchaseResponse | null = null;
+  @Input() products: { id: string; name: string }[] = [];
   @Output() onOpenChange = new EventEmitter<boolean>();
   @Output() onConfirm = new EventEmitter<void>();
+
+  getProductName(productId: string): string {
+    return this.products.find(p => p.id === productId)?.name ?? productId;
+  }
 
   confirm(): void {
     this.onConfirm.emit();

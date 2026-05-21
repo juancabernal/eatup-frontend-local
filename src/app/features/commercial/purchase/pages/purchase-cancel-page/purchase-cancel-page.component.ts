@@ -13,55 +13,75 @@ import { ENV } from '@config/env.config';
   template: `
     <div class="purchase-page">
       <header class="page-header">
-              <div>
-                <button class="btn-link" (click)="goBack()">
-                  ← Volver
-                </button>
-                <h1>Cancelar compra</h1>
-              </div>
-            </header>
+        <div>
+          <button class="btn-link" (click)="goBack()">← Volver</button>
+          <h1>Cancelar compra</h1>
+        </div>
+      </header>
 
-            <section class="card cancel-card">
-              @if (purchase()) {
-                <p>Orden: <strong>{{ purchase()?.orderNumber }}</strong> - Estado: <span class="badge" [ngClass]="statusClassMap[purchase()!.status]">{{ purchase()?.status | uppercase }}</span></p>
-              }
-      <div class="field">
+      <section class="card cancel-card">
+        @if (purchase()) {
+          <p>
+            Orden: <strong>{{ purchase()?.orderNumber }}</strong> — Estado:
+            <span class="badge" [ngClass]="statusClassMap[purchase()!.status]">
+              {{ purchase()?.status | uppercase }}
+            </span>
+          </p>
+        }
+
+        <div class="field">
           <label>Motivo (Opcional)</label>
           <textarea [(ngModel)]="reason" rows="5"></textarea>
         </div>
 
         <div class="actions">
-          <button class="btn-secondary" (click)="router.navigate(['../../'], { relativeTo: route })">Volver</button>
+          <button class="btn-secondary" (click)="goBack()">Volver</button>
           <button class="btn-danger" (click)="confirm()">Confirmar cancelación</button>
         </div>
       </section>
-
     </div>
   `,
   styleUrl: 'purchase-cancel-page.component.css'
 })
-
 export class PurchaseCancelPageComponent implements OnInit {
-  purchase = signal<PurchaseResponse | null>(null);
 
-  statusClassMap: Record<string, string> = { CREATED: 'badge-gray', APPROVED: 'badge-yellow', RECEIVED: 'badge-green', CANCELLED: 'badge-red' };
-  private locationId = ENV.locationId;
+  purchase = signal<PurchaseResponse | null>(null);
+  statusClassMap: Record<string, string> = {
+    CREATED: 'badge-gray',
+    APPROVED: 'badge-yellow',
+    RECEIVED: 'badge-green',
+    CANCELLED: 'badge-red'
+  };
 
   reason = '';
+  private locationId = ENV.locationId;
 
-  constructor(public route: ActivatedRoute, public router: Router, private purchaseService: PurchaseService) {}
+  constructor(
+    public route: ActivatedRoute,
+    public router: Router,
+    private purchaseService: PurchaseService
+  ) {}
 
   ngOnInit(): void {
-
     const id = this.route.snapshot.paramMap.get('id');
-    if (id) this.purchaseService.getPurchaseById(this.locationId, id).subscribe((p) => this.purchase.set(p));
+    if (id) {
+      this.purchaseService
+        .getPurchaseById(this.locationId, id)
+        .subscribe(p => this.purchase.set(p));
+    }
   }
 
   confirm(): void {
-
     const id = this.route.snapshot.paramMap.get('id');
     if (!id) return;
-    this.purchaseService.updateStatus(this.locationId, id, { status: 'CANCELLED', cancelReason: this.reason.trim() }).subscribe(() => this.goBack());
+
+    const trimmed = this.reason.trim();
+    this.purchaseService
+      .updateStatus(this.locationId, id, {
+        status: 'CANCELLED',
+        ...(trimmed ? { cancelReason: trimmed } : {})
+      })
+      .subscribe(() => this.goBack());
   }
 
   goBack(): void {

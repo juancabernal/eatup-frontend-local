@@ -1,7 +1,8 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { Subject, takeUntil } from 'rxjs';
 import { PurchaseService } from '../../services/purchase.service';
 import { ProviderService } from '../../services/provider.service';
 import { ProductService } from '../../services/product.service';
@@ -39,7 +40,8 @@ import { ENV } from '@config/env.config';
               @if (readonly()) {
                 <input [value]="getSupplierName(form.providerId)" disabled />
               } @else {
-                <select [(ngModel)]="form.providerId">
+                <!-- Fix #3: (ngModelChange) limpia items al cambiar proveedor -->
+                <select [(ngModel)]="form.providerId" (ngModelChange)="onProviderChange()">
                   <option value="">Seleccionar proveedor</option>
                   @for (s of suppliers; track s.id) {
                     <option [value]="s.id">{{ s.name }}</option>
@@ -62,10 +64,7 @@ import { ENV } from '@config/env.config';
             @if (purchase()) {
               <div class="field">
                 <label>Estado</label>
-                <span
-                  class="badge"
-                  [ngClass]="statusClassMap[purchase()!.status]"
-                >
+                <span class="badge" [ngClass]="statusClassMap[purchase()!.status]">
                   {{ purchase()!.status | uppercase }}
                 </span>
               </div>
@@ -110,10 +109,10 @@ import { ENV } from '@config/env.config';
                 + Agregar
               </button>
             </div>
-              @if (!form.providerId) {
-                <div class="empty-products">
-                  Debes seleccionar un proveedor antes de agregar productos.
-                </div>
+            @if (!form.providerId) {
+              <div class="empty-products">
+                Debes seleccionar un proveedor antes de agregar productos.
+              </div>
             }
           }
 
@@ -162,10 +161,7 @@ import { ENV } from '@config/env.config';
                     <td>{{ (item.quantity * item.unitPrice) | currency }}</td>
                     @if (!readonly()) {
                       <td>
-                        <button
-                          class="btn-danger-ghost"
-                          (click)="removeItem(i)"
-                        >✕</button>
+                        <button class="btn-danger-ghost" (click)="removeItem(i)">✕</button>
                       </td>
                     }
                   </tr>
@@ -180,18 +176,14 @@ import { ENV } from '@config/env.config';
           } @else {
             <div class="empty-products">
               No hay productos agregados.
-              @if (!readonly()) {
-                Selecciona un producto para comenzar.
-              }
+              @if (!readonly()) { Selecciona un producto para comenzar. }
             </div>
           }
         </section>
 
         @if (!readonly()) {
           <div class="form-actions">
-            <button class="btn-secondary" (click)="goBack()">
-              Cancelar
-            </button>
+            <button class="btn-secondary" (click)="goBack()">Cancelar</button>
             <button
               class="btn-primary"
               (click)="save()"
@@ -208,7 +200,7 @@ import { ENV } from '@config/env.config';
   `,
   styleUrl: 'purchase-form-page.component.css'
 })
-export class PurchaseFormPageComponent implements OnInit {
+export class PurchaseFormPageComponent implements OnInit, OnDestroy {
 
   readonly = signal(false);
   title = signal('Nueva Compra');
@@ -232,6 +224,7 @@ export class PurchaseFormPageComponent implements OnInit {
   };
 
   private locationId = ENV.locationId;
+  private destroy$ = new Subject<void>();
 
   constructor(
     private route: ActivatedRoute,
@@ -242,8 +235,24 @@ export class PurchaseFormPageComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    this.route.paramMap
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => this.initFromRoute());
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private initFromRoute(): void {
     const mode = this.route.snapshot.data['mode'] as string;
     const id = this.route.snapshot.paramMap.get('id');
+
+    this.purchase.set(null);
+    this.items = [];
+    this.form = { providerId: '' };
+    this.total = 0;
 
     this.readonly.set(mode === 'detail');
     this.title.set(
@@ -290,9 +299,16 @@ export class PurchaseFormPageComponent implements OnInit {
       );
   }
 
+  onProviderChange(): void {
+    if (this.items.length > 0) {
+      this.items = [];
+      this.selectedProductId = '';
+      this.recalculate();
+    }
+  }
+
   addProduct(): void {
     if (!this.form.providerId) return;
-
     const product = this.availableProducts.find(p => p.id === this.selectedProductId);
     if (!product) return;
     if (this.items.some(i => i.productId === product.id)) return;
