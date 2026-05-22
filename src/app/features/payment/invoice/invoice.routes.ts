@@ -4,8 +4,6 @@ export const INVOICE_ROUTES: Routes = [
   {
     path: '',
     loadComponent: () =>
-      import('./pages/invoice-placeholder/invoice-placeholder.component').then(
-        m => m.InvoicePlaceholderComponent
-      )
+      import('./pages/invoice-page/invoice-page.component').then(m => m.InvoicePageComponent)
   }
 ];

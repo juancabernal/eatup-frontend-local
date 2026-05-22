@@ -1,16 +1,10 @@
 import { HttpInterceptorFn } from '@angular/common/http';
-import { inject } from '@angular/core';
-import { ENV } from '@config/env.config';
+import { TOKEN_STORAGE_KEY } from '@features/user/services/auth.service';
 
-/**
- * Interceptor temporal que agrega el token del usuario desde el environment.
- * Una vez implementada la autenticación real, reemplazar `ENV.userToken`
- * por el token obtenido del servicio de autenticación.
- */
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
-  const token = ENV.userToken;
+  const token = localStorage.getItem(TOKEN_STORAGE_KEY);
 
-  if (!token || token === 'your_jwt_token_here' || token === 'your_production_jwt_token_here') {
+  if (!token) {
     return next(req);
   }
 

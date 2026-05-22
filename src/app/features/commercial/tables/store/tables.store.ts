@@ -224,20 +224,20 @@ export class TablesStore {
     });
   }
 
-  seatReservation(reservation: TableReservationDTO): void {
-    if (!reservation.id) {
-      this.notifications.error('La reserva no tiene identificador');
-      return;
-    }
-
-    this.tableService.seatReservation(reservation.id).subscribe({
-      next: () => {
-        this.notifications.success('Reserva sentada');
-        this.loadDashboard(DEFAULT_TABLE_VENUE_ID);
-      },
-      error: (err) => this.notifications.error(this.getErrorMessage(err, 'No se pudo sentar la reserva')),
-    });
+seatReservation(reservation: TableReservationDTO): void {
+  if (!reservation.id) {
+    this.notifications.error('La reserva no tiene identificador');
+    return;
   }
+
+  this.tableService.seatReservation(reservation.id, { guestCount: reservation.guestCount ?? 1 }).subscribe({
+    next: () => {
+      this.notifications.success('Reserva sentada');
+      this.loadDashboard(DEFAULT_TABLE_VENUE_ID);
+    },
+    error: (err) => this.notifications.error(this.getErrorMessage(err, 'No se pudo sentar la reserva')),
+  });
+}
 
   private getErrorMessage(error: unknown, fallback: string): string {
     const err = error as any;

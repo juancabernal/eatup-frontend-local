@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { LayoutComponent } from './shared/components/layout/layout.component';
+import { authGuard, guestGuard } from './core/guards/auth.guard';
 
 /**
  * Rutas principales de la aplicación.
@@ -11,8 +12,15 @@ import { LayoutComponent } from './shared/components/layout/layout.component';
  */
 export const routes: Routes = [
   {
+    path: 'login',
+    canActivate: [guestGuard],
+    loadChildren: () =>
+      import('./features/user/user.routes').then(m => m.USER_ROUTES)
+  },
+  {
     path: '',
     component: LayoutComponent,
+    canActivate: [authGuard],
     children: [
       {
         path: '',
@@ -41,6 +49,13 @@ export const routes: Routes = [
           )
       },
       {
+        path: 'commercial/purchases',
+        loadChildren: () =>
+          import('./features/commercial/purchase/purchase.routes').then(
+            m => m.PURCHASE_ROUTES
+          )
+      },
+      {
         path: 'commercial/discount',
         loadChildren: () =>
           import('./features/commercial/discount/discount.routes').then(
@@ -55,6 +70,13 @@ export const routes: Routes = [
           )
       },
       {
+        path: 'commercial/seller',
+        loadChildren: () =>
+          import('./features/commercial/seller/seller.routes').then(
+            m => m.SELLER_ROUTES
+          )
+      },
+      {
         path: 'commercial/sales',
         loadChildren: () =>
           import('./features/commercial/sales/sales.routes').then(
@@ -66,6 +88,13 @@ export const routes: Routes = [
         loadChildren: () =>
           import('./features/commercial/tables/tables.routes').then(
             m => m.TABLES_ROUTES
+          )
+      },
+      {
+        path: 'inventory/transfer',
+        loadChildren: () =>
+          import('./features/inventory/transfer/transfer.routes').then(
+            m => m.TRANSFER_ROUTES
           )
       }
     ]

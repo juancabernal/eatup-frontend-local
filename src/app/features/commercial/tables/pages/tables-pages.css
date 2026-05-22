@@ -480,3 +480,105 @@ dd {
   padding: 8px 12px;
 }
 
+.pagination {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+
+.pagination button {
+  background: #FFF8F2;
+  border: 1px solid rgba(27, 27, 27, 0.12);
+  border-radius: 8px;
+  color: #1B1B1B;
+  font-size: 13px;
+  font-weight: 700;
+  min-height: 36px;
+  min-width: 36px;
+  padding: 0 12px;
+  transition: all 160ms ease;
+}
+
+.pagination button:hover:not(:disabled) {
+  background: #FF6B35;
+  border-color: #FF6B35;
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(255, 107, 53, 0.22);
+}
+
+.pagination button.active {
+  background: #FF6B35;
+  border-color: #FF6B35;
+  color: #fff;
+}
+
+.pagination button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+  transform: none;
+  box-shadow: none;
+}
+
+.pagination span {
+  color: #1B1B1B;
+  font-size: 13px;
+  font-weight: 600;
+  margin-left: 8px;
+}
+.reservation-timeline {
+  background: #f8fafc;
+  border: 1px solid rgba(27, 27, 27, 0.08);
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+}
+
+.timeline-row {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.timeline-label {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.timeline-label.lock {
+  color: #2563eb;
+}
+
+.timeline-label.grace {
+  color: #b45309;
+}
+
+.timeline-value {
+  color: #1B1B1B;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.timeline-warning {
+  background: #fef3c7;
+  border-radius: 6px;
+  color: #b45309;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 10px;
+}
+
+.timeline-info {
+  background: #dbeafe;
+  border-radius: 6px;
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 10px;
+}
+.reservation-card dd {
+  word-break: break-all;
+}

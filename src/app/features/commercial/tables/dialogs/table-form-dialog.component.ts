@@ -23,15 +23,10 @@ import { DEFAULT_TABLE_VENUE_ID } from '../utils/table.constants';
           <div class="grid">
             <label>
               Número
-              <input
-                  type="number"
-                  formControlName="tableNumber"
-                  min="1"
-                  max="2147483647"
-                />
-                  @if (form.controls.tableNumber.invalid && form.controls.tableNumber.touched) {
-                    <small>Ingresa un número válido entre 1 y 2147483647.</small>
-                  }
+              <input type="number" formControlName="tableNumber" min="1" max="2147483647" />
+              @if (form.controls.tableNumber.invalid && form.controls.tableNumber.touched) {
+                <small>Ingresa un número válido entre 1 y 2147483647.</small>
+              }
             </label>
 
             <label>
@@ -77,14 +72,8 @@ export class TableFormDialogComponent {
   readonly title = computed(() => (this.table()?.id ? 'Editar mesa' : 'Crear mesa'));
 
   readonly form = this.fb.group({
-    tableNumber: [
-  1,
-  [
-    Validators.required,
-    Validators.min(1),
-    Validators.max(2147483647),
-  ],
-],
+    id: [''],
+    tableNumber: [1, [Validators.required, Validators.min(1), Validators.max(2147483647)]],
     location: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(100)]],
     venueId: [DEFAULT_TABLE_VENUE_ID, Validators.required],
     isVip: [false],
@@ -95,6 +84,7 @@ export class TableFormDialogComponent {
     const table = this.table();
     if (table) {
       this.form.patchValue({
+        id: table.id ?? '',
         tableNumber: table.tableNumber,
         location: table.location,
         venueId: table.venueId,
@@ -103,6 +93,7 @@ export class TableFormDialogComponent {
       });
     } else {
       this.form.reset({
+        id: '',
         tableNumber: 1,
         location: '',
         venueId: DEFAULT_TABLE_VENUE_ID,

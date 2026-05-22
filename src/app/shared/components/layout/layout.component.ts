@@ -1,6 +1,8 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
+import { AuthService } from '@features/user/services/auth.service';
 
 @Component({
   selector: 'app-layout',
@@ -37,10 +39,11 @@ import { CommonModule } from '@angular/common';
       <main class="content">
         <header class="top-bar">
           <div class="breadcrumb">
-            Dashboard / {{ currentFeature() }}
+            Dashboard
           </div>
           <div class="user-profile">
             <span>Admin</span>
+            <button class="btn-logout" (click)="logout()">Cerrar sesión</button>
           </div>
         </header>
         <section class="main-view">
@@ -191,6 +194,26 @@ import { CommonModule } from '@angular/common';
       font-weight: 600;
       font-size: 0.875rem;
       color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .btn-logout {
+      background: none;
+      border: 1.5px solid var(--color-primary);
+      color: var(--color-primary);
+      border-radius: 0.375rem;
+      padding: 0.375rem 0.75rem;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s, color 0.2s;
+    }
+
+    .btn-logout:hover {
+      background-color: var(--color-primary);
+      color: white;
     }
 
     .main-view {
@@ -201,6 +224,9 @@ import { CommonModule } from '@angular/common';
   `]
 })
 export class LayoutComponent {
+  private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
+
   protected readonly currentFeature = signal('Cash Receipt');
 
   protected readonly modules = signal([
@@ -208,7 +234,8 @@ export class LayoutComponent {
       name: 'Payment',
       expanded: false,
       features: [
-        { name: 'Cash Receipt', path: '/payment/cashreceipt' },
+        { name: 'Cash Receipt',   path: '/payment/cashreceipt' },
+        { name: 'Facturas',       path: '/payment/invoice' },
         { name: 'Payment Method', path: '/payment/paymentmethod' }
       ]
     },
@@ -216,10 +243,19 @@ export class LayoutComponent {
       name: 'Commercial',
       expanded: false,
       features: [
-        { name: 'Descuentos',            path: '/commercial/discount' },
-        { name: 'Clientes por Descuento',path: '/commercial/customer-discount' },
-        { name: 'Mesas',                 path: '/commercial/tables' },
-        { name: 'Ventas',                path: '/commercial/sales' }
+        { name: 'Descuentos',             path: '/commercial/discount' },
+        { name: 'Clientes por Descuento', path: '/commercial/customer-discount' },
+        { name: 'Vendedores',             path: '/commercial/seller' },
+        { name: 'Compras',                path: '/commercial/purchases' },
+        { name: 'Mesas',                  path: '/commercial/tables' },
+        { name: 'Ventas',                 path: '/commercial/sales' }
+      ]
+    },
+    {
+      name: 'Inventory',
+      expanded: false,
+      features: [
+        { name: 'Transfer', path: '/inventory/transfer' }
       ]
     }
   ]);
@@ -228,5 +264,10 @@ export class LayoutComponent {
     this.modules.update(mods => mods.map(m =>
       m.name === moduleName ? { ...m, expanded: !m.expanded } : m
     ));
+  }
+
+  logout(): void {
+    this.authService.logout();
+    this.router.navigate(['/login']);
   }
 }

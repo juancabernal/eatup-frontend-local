@@ -9,7 +9,6 @@ import { StatusBadgeComponent } from '../components/status-badge.component';
 import { TableReservationDTO } from '../models/table.models';
 import { DateTimePipe } from '../pipes/date-time.pipe';
 import { TableNotificationService } from '../services/table-notification.service';
-import { TableService } from '../services/table.service';
 import { TablesStore } from '../store/tables.store';
 
 @Component({
@@ -49,14 +48,33 @@ import { TablesStore } from '../store/tables.store';
               </div>
               <eatup-status-badge [status]="reservation.status" />
             </div>
+
             <dl>
               <div><dt>Documento</dt><dd>{{ reservation.guestDocumentNumber }}</dd></div>
               <div><dt>Invitados</dt><dd>{{ reservation.guestCount }}</dd></div>
-              <div><dt>Fecha</dt><dd>{{ reservation.reservationDateTime | eatupDateTime }}</dd></div>
+              <div><dt>Reserva</dt><dd>{{ reservation.reservationDateTime | eatupDateTime }}</dd></div>
             </dl>
+
+            <div class="reservation-timeline">
+              <div class="timeline-row">
+                <span class="timeline-label lock">🔒 Bloqueo</span>
+                <span class="timeline-value">{{ reservation.reservationLockStartsAt | eatupDateTime }}</span>
+              </div>
+              <div class="timeline-row">
+                <span class="timeline-label grace">⏱ Tolerancia</span>
+                <span class="timeline-value">{{ reservation.reservationGraceEndsAt | eatupDateTime }}</span>
+              </div>
+              @if (isExpiringSoon(reservation)) {
+                <div class="timeline-warning">⚠️ La tolerancia vence pronto</div>
+              }
+              @if (isLocked(reservation)) {
+                <div class="timeline-info">🔒 Mesa bloqueada para esta reserva</div>
+              }
+            </div>
+
             <footer>
               <button type="button" (click)="edit(reservation)">Editar</button>
-              <button type="button" (click)="store.seatReservation(reservation)">Sentar</button>
+              <button type="button" (click)="confirmSeat(reservation)">Sentar</button>
               <button type="button" class="danger-link" (click)="confirmCancel(reservation)">Cancelar</button>
             </footer>
           </article>
@@ -73,10 +91,10 @@ import { TablesStore } from '../store/tables.store';
     />
     <eatup-confirm-dialog
       [open]="confirmOpen()"
-      title="Cancelar reserva"
-      message="La reserva será cancelada y dejará de aparecer como activa."
-      confirmText="Cancelar reserva"
-      (confirm)="cancelReservation()"
+      [title]="confirmTitle()"
+      [message]="confirmMessage()"
+      [confirmText]="confirmText()"
+      (confirm)="runConfirm()"
       (cancel)="confirmOpen.set(false)"
     />
   `,
@@ -84,14 +102,16 @@ import { TablesStore } from '../store/tables.store';
 })
 export class TablesReservationsPage implements OnInit {
   readonly store = inject(TablesStore);
-  private readonly tableService = inject(TableService);
   private readonly notifications = inject(TableNotificationService);
 
   readonly reservations = signal<TableReservationDTO[]>([]);
   readonly selectedReservation = signal<TableReservationDTO | null>(null);
   readonly dialogOpen = signal(false);
   readonly confirmOpen = signal(false);
-  readonly pendingCancel = signal<TableReservationDTO | null>(null);
+  readonly confirmTitle = signal('Confirmar acción');
+  readonly confirmMessage = signal('');
+  readonly confirmText = signal('Confirmar');
+  readonly confirmAction = signal<(() => void) | null>(null);
   documentSearch = '';
 
   ngOnInit(): void {
@@ -100,39 +120,44 @@ export class TablesReservationsPage implements OnInit {
     this.reservations.set(this.store.reservations());
     window.setTimeout(() => this.reservations.set(this.store.reservations()), 420);
   }
+
   getTableNumber(tableId: string | undefined): string {
-    if (!tableId)  return 'Sin asignar';
+    if (!tableId) return 'Sin asignar';
     const table = this.store.tables().find(t => t.id === tableId);
     return table ? String(table.tableNumber) : tableId;
-   }
-
-search(): void {
-  const document = this.documentSearch.trim().toLowerCase();
-
-  if (!document) {
-    this.resetSearch();
-    return;
   }
 
-  const filtered = this.store
-    .reservations()
-    .filter(reservation =>
-      reservation.guestDocumentNumber
-        ?.toLowerCase()
-        .includes(document)
-    );
+  isLocked(reservation: TableReservationDTO): boolean {
+    if (!reservation.reservationLockStartsAt) return false;
+    const now = new Date();
+    const lockStart = new Date(reservation.reservationLockStartsAt);
+    const graceEnd = reservation.reservationGraceEndsAt ? new Date(reservation.reservationGraceEndsAt) : null;
+    return now >= lockStart && (!graceEnd || now <= graceEnd);
+  }
 
-  this.reservations.set(filtered);
-}
+  isExpiringSoon(reservation: TableReservationDTO): boolean {
+    if (!reservation.reservationGraceEndsAt) return false;
+    const now = new Date();
+    const graceEnd = new Date(reservation.reservationGraceEndsAt);
+    const diffMinutes = (graceEnd.getTime() - now.getTime()) / 60000;
+    return diffMinutes > 0 && diffMinutes <= 10;
+  }
+
+  search(): void {
+    const doc = this.documentSearch.trim().toLowerCase();
+    if (!doc) {
+      this.resetSearch();
+      return;
+    }
+    const filtered = this.store.reservations().filter(r =>
+      r.guestDocumentNumber?.toLowerCase().includes(doc)
+    );
+    this.reservations.set(filtered);
+  }
 
   resetSearch(): void {
     this.store.loadReservations();
     window.setTimeout(() => this.reservations.set(this.store.reservations()), 420);
-  }
-
-  openCreate(): void {
-    this.selectedReservation.set(null);
-    this.dialogOpen.set(true);
   }
 
   edit(reservation: TableReservationDTO): void {
@@ -147,22 +172,31 @@ search(): void {
       this.notifications.error('Selecciona una mesa para la reserva');
       return;
     }
-
     this.store.saveReservation(tableId, reservation);
     this.resetSearch();
   }
 
-  confirmCancel(reservation: TableReservationDTO): void {
-    this.pendingCancel.set(reservation);
+  confirmSeat(reservation: TableReservationDTO): void {
+    this.confirmTitle.set('Sentar reserva');
+    this.confirmMessage.set(`¿Confirmas que el cliente ${reservation.guestName} llegó y será sentado en la mesa ${this.getTableNumber(reservation.tableId)}?`);
+    this.confirmText.set('Sentar');
+    this.confirmAction.set(() => this.store.seatReservation(reservation));
     this.confirmOpen.set(true);
   }
 
-  cancelReservation(): void {
-    this.confirmOpen.set(false);
-    const reservation = this.pendingCancel();
-    if (reservation) {
+  confirmCancel(reservation: TableReservationDTO): void {
+    this.confirmTitle.set('Cancelar reserva');
+    this.confirmMessage.set(`La reserva de ${reservation.guestName} será cancelada y dejará de aparecer como activa.`);
+    this.confirmText.set('Cancelar reserva');
+    this.confirmAction.set(() => {
       this.store.cancelReservation(reservation);
       this.resetSearch();
-    }
+    });
+    this.confirmOpen.set(true);
+  }
+
+  runConfirm(): void {
+    this.confirmOpen.set(false);
+    this.confirmAction()?.();
   }
 }

@@ -203,22 +203,22 @@ export class TableService {
     return this.http!.get<TableReservationDTO[]>(`${this.baseUrl}/reservations/search`, this.requestOptions(params)).pipe(this.handleError<TableReservationDTO[]>());
   }
 
-  seatReservation(reservationId: string, payload: TableSessionDTO = { guestCount: 1 }): Observable<TableSessionDTO> {
-    if (this.useMocks) {
-      const reservation = MOCK_RESERVATIONS.find((item) => item.id === reservationId) ?? MOCK_RESERVATIONS[0];
-      return this.mock({
-        id: crypto.randomUUID(),
-        tableId: reservation.tableId,
-        reservationId,
-        guestCount: reservation.guestCount,
-        openedAt: new Date().toISOString(),
-      });
-    }
-
-    return this.http!
-      .post<TableSessionDTO>(`${this.baseUrl}/reservations/${reservationId}/seat`, payload, this.requestOptions())
-      .pipe(this.handleError<TableSessionDTO>());
+seatReservation(reservationId: string, payload: TableSessionDTO): Observable<TableSessionDTO> {
+  if (this.useMocks) {
+    const reservation = MOCK_RESERVATIONS.find((item) => item.id === reservationId) ?? MOCK_RESERVATIONS[0];
+    return this.mock({
+      id: crypto.randomUUID(),
+      tableId: reservation.tableId,
+      reservationId,
+      guestCount: payload.guestCount,
+      openedAt: new Date().toISOString(),
+    });
   }
+
+  return this.http!
+    .post<TableSessionDTO>(`${this.baseUrl}/reservations/${reservationId}/seat`, payload, this.requestOptions())
+    .pipe(this.handleError<TableSessionDTO>());
+}
 
   getSummary(): Observable<TableSummaryDTO> {
     if (this.useMocks) {
