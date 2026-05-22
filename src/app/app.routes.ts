@@ -91,6 +91,13 @@ export const routes: Routes = [
           import('./features/inventory/transfer/transfer.routes').then(
             m => m.TRANSFER_ROUTES
           )
+      },
+      {
+        path: 'inventory/categories',
+        loadChildren: () =>
+          import('./features/inventory/categories/categories.routes').then(
+            m => m.CATEGORIES_ROUTES
+          )
       }
     ]
   },
