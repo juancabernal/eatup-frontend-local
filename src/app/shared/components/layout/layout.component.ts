@@ -1,13 +1,13 @@
-import { Component, signal, inject } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '@features/user/services/auth.service';
+import { ProfilePanelComponent } from '@features/user/components/profile-panel/profile-panel.component';
 
 @Component({
   selector: 'app-layout',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, ProfilePanelComponent],
   template: `
     <div class="layout-container">
       <aside class="sidebar">
@@ -36,13 +36,15 @@ import { AuthService } from '@features/user/services/auth.service';
           }
         </nav>
       </aside>
+
       <main class="content">
         <header class="top-bar">
-          <div class="breadcrumb">
-            Dashboard
-          </div>
+          <div class="breadcrumb">Dashboard</div>
           <div class="user-profile">
-            <span>Admin</span>
+            <button class="btn-user" type="button" (click)="openUserPanel()">
+              <span aria-hidden="true">👤</span>
+              <span>Mi perfil</span>
+            </button>
             <button class="btn-logout" (click)="logout()">Cerrar sesión</button>
           </div>
         </header>
@@ -50,6 +52,10 @@ import { AuthService } from '@features/user/services/auth.service';
           <router-outlet></router-outlet>
         </section>
       </main>
+
+      @if (isUserPanelOpen()) {
+        <app-profile-panel (panelClosed)="closeUserPanel()" />
+      }
     </div>
   `,
   styles: [`
@@ -199,6 +205,20 @@ import { AuthService } from '@features/user/services/auth.service';
       gap: 1rem;
     }
 
+    .btn-user {
+      border: 1.5px solid #d4dbe5;
+      background: #fff;
+      color: #1f2937;
+      border-radius: 999px;
+      padding: 0.3rem 0.75rem;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      cursor: pointer;
+    }
+
     .btn-logout {
       background: none;
       border: 1.5px solid var(--color-primary);
@@ -227,7 +247,7 @@ export class LayoutComponent {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
 
-  protected readonly currentFeature = signal('Cash Receipt');
+  protected readonly isUserPanelOpen = signal(false);
 
   protected readonly modules = signal([
     {
@@ -261,10 +281,18 @@ export class LayoutComponent {
     }
   ]);
 
-  toggleModule(moduleName: string) {
+  toggleModule(moduleName: string): void {
     this.modules.update(mods => mods.map(m =>
       m.name === moduleName ? { ...m, expanded: !m.expanded } : m
     ));
+  }
+
+  openUserPanel(): void {
+    this.isUserPanelOpen.set(true);
+  }
+
+  closeUserPanel(): void {
+    this.isUserPanelOpen.set(false);
   }
 
   logout(): void {

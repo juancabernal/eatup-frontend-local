@@ -7,5 +7,12 @@ export const USER_ROUTES: Routes = [
       import('./pages/login-page/login-page.component').then(
         m => m.LoginPageComponent
       )
+  },
+  {
+    path: 'register',
+    loadComponent: () =>
+      import('./pages/register-page/register-page.component').then(
+        m => m.RegisterPageComponent
+      )
   }
 ];
