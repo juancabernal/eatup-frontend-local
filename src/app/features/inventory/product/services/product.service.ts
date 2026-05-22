@@ -1,0 +1,42 @@
+import { Injectable, inject } from '@angular/core';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { ProductResponse, ProductRequest, ProductPatchRequest } from '../models/product.model';
+
+@Injectable({ providedIn: 'root' })
+export class ProductService {
+  private readonly http = inject(HttpClient);
+  private readonly baseUrl = '/inventory/product';
+
+  findAll(page: number = 0, size: number = 10, name?: string): Observable<any> {
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('size', size.toString());
+    
+    if (name) {
+      params = params.set('name', name);
+    }
+    
+    return this.http.get<any>(this.baseUrl, { params });
+  }
+
+  findById(id: string): Observable<ProductResponse> {
+    return this.http.get<ProductResponse>(`${this.baseUrl}/${id}`);
+  }
+
+  create(request: ProductRequest): Observable<ProductResponse> {
+    return this.http.post<ProductResponse>(this.baseUrl, request);
+  }
+
+  update(id: string, request: ProductRequest): Observable<ProductResponse> {
+    return this.http.put<ProductResponse>(`${this.baseUrl}/${id}`, request);
+  }
+
+  patch(id: string, request: ProductPatchRequest): Observable<ProductResponse> {
+    return this.http.patch<ProductResponse>(`${this.baseUrl}/${id}`, request);
+  }
+
+  delete(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${id}`);
+  }
+}
