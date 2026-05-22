@@ -1,13 +1,12 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormGroup, FormControl, Validators } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
+import { CategoryService, DiscountCategory } from '@commercial/discount/services/category';
 import { Router, ActivatedRoute, RouterLink } from '@angular/router';
 import { DiscountService } from '@commercial/discount/services/discount';
 import { Discount } from '@commercial/discount/models/discount.model';
 import { ENV } from '@config/env.config';
 
-interface Category { id: string; name: string; status: string; }
 
 @Component({
   selector: 'app-discount-form-page',
@@ -18,15 +17,14 @@ interface Category { id: string; name: string; status: string; }
 })
 export class DiscountFormPage implements OnInit {
   private readonly discountService = inject(DiscountService);
-  private readonly http            = inject(HttpClient);
   private readonly router          = inject(Router);
   private readonly route           = inject(ActivatedRoute);
+  private readonly categoryService = inject(CategoryService);
 
-  private readonly categoriesUrl = `${ENV.apiUrl.replace('/api/v1', '')}/inventory/api/v1/categories/subtype/descuento`;
 
   isEditing    = signal(false);
   submitting   = signal(false);
-  categories   = signal<Category[]>([]);
+  categories = signal<DiscountCategory[]>([]);
   generalError = signal('');
 
   private discountId = '';
@@ -46,7 +44,7 @@ export class DiscountFormPage implements OnInit {
   get descriptionCtrl() { return this.form.get('description')!; }
 
   ngOnInit(): void {
-    this.http.get<Category[]>(this.categoriesUrl).subscribe({
+    this.categoryService.getAll().subscribe({
       next: (data) => this.categories.set(data.filter(c => c.status === 'ACTIVE'))
     });
 

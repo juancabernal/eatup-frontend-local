@@ -1,7 +1,8 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormGroup, FormControl, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
+import { ClientService, Client } from '@commercial/customer-discount/services/client';
+import { LocationService } from '@commercial/customer-discount/services/location';
 import { Router, ActivatedRoute, RouterLink } from '@angular/router';
 import { CustomerDiscountService } from '@commercial/customer-discount/services/customer-discount';
 import { CustomerDiscount } from '@commercial/customer-discount/models/customer-discount.model';
@@ -9,7 +10,6 @@ import { DiscountService } from '@commercial/discount/services/discount';
 import { Discount } from '@commercial/discount/models/discount.model';
 import { ENV } from '@config/env.config';
 
-interface Client { id: string; firstName: string; firstLastName: string; documentNumber: string; }
 
 function dateRangeValidator(group: AbstractControl): ValidationErrors | null {
   const start = group.get('startDate')?.value as string;
@@ -31,12 +31,10 @@ function dateRangeValidator(group: AbstractControl): ValidationErrors | null {
 export class CustomerDiscountFormPage implements OnInit {
   private readonly service         = inject(CustomerDiscountService);
   private readonly discountService = inject(DiscountService);
-  private readonly http            = inject(HttpClient);
   private readonly router          = inject(Router);
   private readonly route           = inject(ActivatedRoute);
-
-  private readonly baseApiUrl  = ENV.apiUrl.replace('/api/v1', '');
-  private readonly clientsUrl  = `${this.baseApiUrl}/commercial/api/v1/clients?active=true&applyDiscounts=true`;
+  private readonly clientService   = inject(ClientService);
+  private readonly locationService = inject(LocationService);
 
   isEditing    = signal(false);
   submitting   = signal(false);
@@ -71,16 +69,16 @@ export class CustomerDiscountFormPage implements OnInit {
       next: (data) => this.discounts.set(data.filter(d => d.status))
     });
 
-    this.http.get<Client[]>(this.clientsUrl).subscribe({
+    this.clientService.getAllActive().subscribe({
       next: (data) => this.clients.set(data)
     });
 
-    this.http.get<{ id: string; name: string }>(
-      `${this.baseApiUrl}/inventory/api/v1/location/${this.locationId}`
-    ).subscribe({
-      next:  (loc) => this.locationName.set(loc.name),
-      error: ()    => this.locationName.set('Ubicación no encontrada')
-    });
+    if (this.locationId) {
+      this.locationService.getById(this.locationId).subscribe({
+        next:  (loc) => this.locationName.set(loc.name),
+        error: ()    => this.locationName.set('Ubicación no encontrada')
+      });
+    }
 
     this.itemId = this.route.snapshot.paramMap.get('id') ?? '';
     if (this.itemId) {

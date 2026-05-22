@@ -1,13 +1,13 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
+import { ClientService } from '@commercial/customer-discount/services/client';
+import { LocationService } from '@commercial/customer-discount/services/location';
 import { CustomerDiscountService } from '@commercial/customer-discount/services/customer-discount';
 import { CustomerDiscount } from '@commercial/customer-discount/models/customer-discount.model';
 import { DiscountService } from '@commercial/discount/services/discount';
 import { ENV } from '@config/env.config';
 
-interface Client { id: string; firstName: string; firstLastName: string; }
 
 @Component({
   selector: 'app-customer-discount-detail-page',
@@ -19,11 +19,11 @@ interface Client { id: string; firstName: string; firstLastName: string; }
 export class CustomerDiscountDetailPage implements OnInit {
   private readonly service         = inject(CustomerDiscountService);
   private readonly discountService = inject(DiscountService);
-  private readonly http            = inject(HttpClient);
   private readonly route           = inject(ActivatedRoute);
   private readonly router          = inject(Router);
+  private readonly clientService   = inject(ClientService);
+  private readonly locationService = inject(LocationService);
 
-  private readonly baseApiUrl = ENV.apiUrl.replace('/api/v1', '');
 
   item         = signal<CustomerDiscount | null>(null);
   discountName = signal('—');
@@ -48,25 +48,28 @@ export class CustomerDiscountDetailPage implements OnInit {
       }
     });
   }
+  
+private loadNames(data: CustomerDiscount): void {
+  this.discountService.getById(data.discountId).subscribe({
+    next: (d) => this.discountName.set(`${d.description} (${d.percentage}%)`),
+    error: ()  => this.discountName.set('Descuento no encontrado')
+  });
 
-  private loadNames(data: CustomerDiscount): void {
-    this.discountService.getById(data.discountId).subscribe({
-      next: (d) => this.discountName.set(`${d.description} (${d.percentage}%)`),
-      error: ()  => this.discountName.set('Descuento no encontrado')
-    });
+  this.clientService.getAll().subscribe({
+    next: (clients) => {
+      const c = clients.find(c => c.id === data.customerId);
+      this.clientName.set(c ? `${c.firstName} ${c.firstLastName}` : '—');
+    }
+  });
 
-    this.http.get<Client[]>(`${this.baseApiUrl}/commercial/api/v1/clients`).subscribe({
-      next: (clients) => {
-        const c = clients.find(c => c.id === data.customerId);
-        this.clientName.set(c ? `${c.firstName} ${c.firstLastName}` : '—');
-      }
-    });
-
-    this.http.get<{ id: string; name: string }>(`${this.baseApiUrl}/inventory/api/v1/location/${ENV.locationId}`).subscribe({
+  const locId = ENV.locationId;
+  if (locId) {
+    this.locationService.getById(locId).subscribe({
       next:  (loc) => this.locationName.set(loc.name),
       error: ()    => this.locationName.set('Sede no encontrada')
     });
   }
+}
 
   delete(): void {
     if (!confirm('¿Eliminar esta asignación?')) return;

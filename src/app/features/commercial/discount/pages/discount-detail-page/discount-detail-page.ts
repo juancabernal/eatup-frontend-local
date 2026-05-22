@@ -1,12 +1,11 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
+import { CategoryService } from '@commercial/discount/services/category';
 import { DiscountService } from '@commercial/discount/services/discount';
 import { Discount } from '@commercial/discount/models/discount.model';
 import { ENV } from '@config/env.config';
 
-interface Category { id: string; name: string; }
 
 @Component({
   selector: 'app-discount-detail-page',
@@ -17,11 +16,9 @@ interface Category { id: string; name: string; }
 })
 export class DiscountDetailPage implements OnInit {
   private readonly discountService = inject(DiscountService);
-  private readonly http = inject(HttpClient);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
-
-  private readonly categoriesUrl = `${ENV.apiUrl.replace('/api/v1', '')}/inventory/api/v1/categories/subtype/descuento`;
+  private readonly categoryService = inject(CategoryService);
 
   discount     = signal<Discount | null>(null);
   categoryName = signal('—');
@@ -45,7 +42,7 @@ export class DiscountDetailPage implements OnInit {
   }
 
   private fetchCategoryName(categoryId: string): void {
-    this.http.get<Category[]>(this.categoriesUrl).subscribe({
+    this.categoryService.getAll().subscribe({
       next: (data) => {
         const cat = data.find(c => c.id === categoryId);
         this.categoryName.set(cat?.name ?? 'Sin categoría');

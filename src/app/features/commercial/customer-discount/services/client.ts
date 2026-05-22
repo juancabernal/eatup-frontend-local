@@ -18,4 +18,8 @@ export class ClientService {
   getAll(): Observable<Client[]> {
     return this.http.get<Client[]>(this.url);
   }
+
+  getAllActive(): Observable<Client[]> {
+    return this.http.get<Client[]>(`${this.url}?active=true&applyDiscounts=true`);
+  }
 }

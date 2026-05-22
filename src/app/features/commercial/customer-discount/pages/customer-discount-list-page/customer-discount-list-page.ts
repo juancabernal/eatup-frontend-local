@@ -29,8 +29,6 @@ export class CustomerDiscountListPage implements OnInit {
   private readonly router          = inject(Router);
   private excludeId = '';
 
-  private readonly baseApiUrl = ENV.apiUrl.replace('/api/v1', '');
-  private readonly clientsUrl = `${this.baseApiUrl}/commercial/api/v1/clients`;
 
   items        = signal<CustomerDiscount[]>([]);
   discountMap  = signal<Map<string, string>>(new Map());
