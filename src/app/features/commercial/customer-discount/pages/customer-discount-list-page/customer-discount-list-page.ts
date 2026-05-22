@@ -9,13 +9,14 @@ import { DiscountService } from '@commercial/discount/services/discount';
 import { ENV } from '@config/env.config';
 import { FormsModule } from '@angular/forms';
 import { CustomerDiscountFilterPipe } from '@commercial/customer-discount/pipes/customer-discount-filter.pipe';
+import { CustomerDiscountExpiryBadgeComponent } from '@commercial/customer-discount/components/customer-discount-expiry-badge/customer-discount-expiry-badge';
 
 interface Client { id: string; firstName: string; firstLastName: string; documentNumber: string; }
 
 @Component({
   selector: 'app-customer-discount-list-page',
   standalone: true,
-  imports: [CommonModule, RouterLink, DatePipe, FormsModule, CustomerDiscountFilterPipe],
+  imports: [CommonModule, RouterLink, DatePipe, FormsModule, CustomerDiscountFilterPipe, CustomerDiscountExpiryBadgeComponent],
   templateUrl: './customer-discount-list-page.html',
   styleUrl: './customer-discount-list-page.css'
 })

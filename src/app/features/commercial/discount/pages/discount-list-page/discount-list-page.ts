@@ -8,13 +8,14 @@ import { DiscountService } from '@commercial/discount/services/discount';
 import { Discount } from '@commercial/discount/models/discount.model';
 import { ENV } from '@config/env.config';
 import { DiscountFilterPipe } from '@commercial/discount/pipes/discount-filter.pipe';
+import { DiscountStatusBadgeComponent } from '@commercial/discount/components/discount-status-badge/discount-status-badge';
 
 interface Category { id: string; name: string; status: string; }
 
 @Component({
   selector: 'app-discount-list-page',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule, DiscountFilterPipe],
+  imports: [CommonModule, RouterLink, FormsModule, DiscountFilterPipe, DiscountStatusBadgeComponent],
   templateUrl: './discount-list-page.html',
   styleUrl: './discount-list-page.css'
 })

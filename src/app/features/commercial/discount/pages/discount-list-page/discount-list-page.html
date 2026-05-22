@@ -74,9 +74,7 @@
             <td>{{ discount.createdAt ? (discount.createdAt | date:'dd/MM/yyyy') : '—' }}</td>
             <td>{{ discount.modifiedAt ? (discount.modifiedAt | date:'dd/MM/yyyy') : '—' }}</td>
             <td>
-              <span [class]="discount.status ? 'badge-active' : 'badge-inactive'">
-                {{ discount.status ? 'Activo' : 'Inactivo' }}
-              </span>
+              <app-discount-status-badge [active]="discount.status" />
             </td>
             <td class="actions">
               <a [routerLink]="[discount.id]" class="btn-icon" title="Ver detalle">

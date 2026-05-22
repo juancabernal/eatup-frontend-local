@@ -49,7 +49,7 @@
             <td>{{ locationName() }}</td>
             <td>{{ item.assignedAt ? (item.assignedAt | date:'dd/MM/yyyy') : '—' }}</td>
             <td>{{ item.startDate ? (item.startDate | date:'dd/MM/yyyy') : 'Sin inicio' }}</td>
-            <td>{{ item.endDate ? (item.endDate | date:'dd/MM/yyyy') : 'Sin vencimiento' }}</td>
+            <td><app-customer-discount-expiry-badge [endDate]="item.endDate" /></td>
             <td class="actions">
               <a [routerLink]="[item.id]" class="btn-icon" title="Ver detalle">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
