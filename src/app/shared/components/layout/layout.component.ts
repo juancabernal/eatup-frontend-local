@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '@features/user/services/auth.service';
@@ -45,7 +45,7 @@ import { ProfilePanelComponent } from '@features/user/components/profile-panel/p
               <span aria-hidden="true">👤</span>
               <span>Mi perfil</span>
             </button>
-            <button class="btn-logout" (click)="logout()">Cerrar sesión</button>
+            <button class="btn-logout" (click)="confirmLogout()">Cerrar sesión</button>
           </div>
         </header>
         <section class="main-view">
@@ -55,6 +55,21 @@ import { ProfilePanelComponent } from '@features/user/components/profile-panel/p
 
       @if (isUserPanelOpen()) {
         <app-profile-panel (panelClosed)="closeUserPanel()" />
+      }
+
+      <!-- Modal confirmación logout -->
+      @if (showLogoutModal()) {
+        <div class="modal-backdrop" (click)="cancelLogout()">
+          <div class="modal-box" (click)="$event.stopPropagation()">
+            <div class="modal-icon">🔒</div>
+            <h3>¿Cerrar sesión?</h3>
+            <p>Tu sesión se cerrará y tendrás que volver a iniciar sesión para acceder.</p>
+            <div class="modal-actions">
+              <button class="btn-cancel" (click)="cancelLogout()">Cancelar</button>
+              <button class="btn-confirm" (click)="doLogout()">Sí, cerrar sesión</button>
+            </div>
+          </div>
+        </div>
       }
     </div>
   `,
@@ -105,9 +120,7 @@ import { ProfilePanelComponent } from '@features/user/components/profile-panel/p
       overflow-y: auto;
     }
 
-    .nav-section {
-      margin-bottom: 2rem;
-    }
+    .nav-section { margin-bottom: 2rem; }
 
     .section-title {
       font-size: 0.75rem;
@@ -128,28 +141,17 @@ import { ProfilePanelComponent } from '@features/user/components/profile-panel/p
       transition: color 0.2s;
     }
 
-    .section-title:hover {
-      color: white;
-    }
+    .section-title:hover { color: white; }
 
     .chevron {
       font-size: 0.6rem;
       transition: transform 0.3s ease;
     }
 
-    .chevron.rotated {
-      transform: rotate(-180deg);
-    }
+    .chevron.rotated { transform: rotate(-180deg); }
 
-    .nav-links {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-
-    .nav-links li {
-      margin-bottom: 0.25rem;
-    }
+    .nav-links { list-style: none; padding: 0; margin: 0; }
+    .nav-links li { margin-bottom: 0.25rem; }
 
     .nav-links a {
       display: flex;
@@ -191,10 +193,7 @@ import { ProfilePanelComponent } from '@features/user/components/profile-panel/p
       flex-shrink: 0;
     }
 
-    .breadcrumb {
-      color: var(--text-muted);
-      font-size: 0.875rem;
-    }
+    .breadcrumb { color: var(--text-muted); font-size: 0.875rem; }
 
     .user-profile {
       font-weight: 600;
@@ -241,13 +240,92 @@ import { ProfilePanelComponent } from '@features/user/components/profile-panel/p
       padding: 2rem;
       overflow-y: auto;
     }
+
+    /* ── Modal logout ─────────────────────────────────────────────────── */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      animation: fadeIn .15s ease;
+    }
+
+    .modal-box {
+      background: #fff;
+      border-radius: 16px;
+      padding: 32px 28px;
+      max-width: 360px;
+      width: 90%;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+      animation: slideUp .2s ease;
+    }
+
+    .modal-icon { font-size: 36px; margin-bottom: 12px; }
+
+    .modal-box h3 {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1e1e1e;
+      margin: 0 0 8px;
+    }
+
+    .modal-box p {
+      font-size: 13px;
+      color: #6b7280;
+      margin: 0 0 24px;
+      line-height: 1.5;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+    }
+
+    .btn-cancel {
+      flex: 1;
+      padding: 10px;
+      border: 1.5px solid #e2e8f0;
+      background: #fff;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #6b7280;
+      cursor: pointer;
+      transition: background .15s;
+    }
+
+    .btn-cancel:hover { background: #f9fafb; }
+
+    .btn-confirm {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      background: var(--color-primary);
+      color: #fff;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .15s;
+    }
+
+    .btn-confirm:hover { opacity: .88; }
+
+    @keyframes fadeIn  { from { opacity: 0 } to { opacity: 1 } }
+    @keyframes slideUp { from { transform: translateY(16px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
   `]
 })
 export class LayoutComponent {
   private readonly authService = inject(AuthService);
-  private readonly router = inject(Router);
+  private readonly router      = inject(Router);
 
-  protected readonly isUserPanelOpen = signal(false);
+  protected readonly isUserPanelOpen  = signal(false);
+  protected readonly showLogoutModal  = signal(false);
 
   protected readonly modules = signal([
     {
@@ -263,21 +341,20 @@ export class LayoutComponent {
       name: 'Commercial',
       expanded: false,
       features: [
-        { name: 'Descuentos',             path: '/commercial/discount' },
-        { name: 'Clientes por Descuento', path: '/commercial/customer-discount' },
-        { name: 'Vendedores',             path: '/commercial/seller' },
-        { name: 'Compras',                path: '/commercial/purchases' },
-        { name: 'Mesas',                  path: '/commercial/tables' },
-        { name: 'Ventas',                 path: '/commercial/sales' }
+        { name: 'Descuentos', path: '/commercial/discount' },
+        { name: 'Vendedores', path: '/commercial/seller' },
+        { name: 'Compras',    path: '/commercial/purchases' },
+        { name: 'Mesas',      path: '/commercial/tables' },
+        { name: 'Ventas',     path: '/commercial/sales' }
       ]
     },
     {
       name: 'Inventory',
-      expanded: false,
+      expanded: true,
       features: [
-        { name: 'Transfer', path: '/inventory/transfer' },
+        { name: 'Transfer',   path: '/inventory/transfer' },
         { name: 'Categories', path: '/inventory/categories' },
-        { name: 'Productos', path: '/inventory/product' }
+        { name: 'Productos',  path: '/inventory/product' }
       ]
     }
   ]);
@@ -288,15 +365,16 @@ export class LayoutComponent {
     ));
   }
 
-  openUserPanel(): void {
-    this.isUserPanelOpen.set(true);
-  }
+  openUserPanel():  void { this.isUserPanelOpen.set(true);  }
+  closeUserPanel(): void { this.isUserPanelOpen.set(false); }
 
-  closeUserPanel(): void {
-    this.isUserPanelOpen.set(false);
-  }
+  // ── Logout con confirmación ───────────────────────────────────────────────
 
-  logout(): void {
+  confirmLogout(): void { this.showLogoutModal.set(true);  }
+  cancelLogout():  void { this.showLogoutModal.set(false); }
+
+  doLogout(): void {
+    this.showLogoutModal.set(false);
     this.authService.logout();
     this.router.navigate(['/login']);
   }

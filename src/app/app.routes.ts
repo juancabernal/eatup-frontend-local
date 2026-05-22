@@ -24,7 +24,7 @@ export const routes: Routes = [
     children: [
       {
         path: '',
-        redirectTo: 'payment/cashreceipt',
+        redirectTo: 'login',
         pathMatch: 'full'
       },
       {
@@ -115,6 +115,6 @@ export const routes: Routes = [
   },
   {
     path: '**',
-    redirectTo: ''
+    redirectTo: 'login'
   }
 ];

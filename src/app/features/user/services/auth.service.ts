@@ -11,22 +11,12 @@ export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = ENV.apiUrl.replace('/api/v1', '');
 
-  private readonly _token = signal<string | null>(this.resolveInitialToken());
+  private readonly _token = signal<string | null>(
+    localStorage.getItem(TOKEN_STORAGE_KEY)
+  );
 
   readonly token = this._token.asReadonly();
   readonly isAuthenticated = computed(() => !!this._token());
-
-  private resolveInitialToken(): string | null {
-    const stored = localStorage.getItem(TOKEN_STORAGE_KEY);
-    if (stored) return stored;
-
-    // Si hay un token en el env (dev), lo sincronizamos a localStorage
-    const envToken = ENV.userToken || null;
-    if (envToken) {
-      localStorage.setItem(TOKEN_STORAGE_KEY, envToken);
-    }
-    return envToken;
-  }
 
   login(request: LoginRequest): Observable<LoginResponse> {
     return this.http.post<LoginResponse>(
