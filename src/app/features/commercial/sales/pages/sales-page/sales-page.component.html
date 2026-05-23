@@ -528,7 +528,7 @@
             (click)="pickSeller(s)"
           >
             <span>{{ sellerDisplayName(s) }}</span>
-            <small>{{ s.document || 'Sin documento' }}</small>
+            <small>{{ sellerDocument(s) }}</small>
           </button>
         }
       </div>

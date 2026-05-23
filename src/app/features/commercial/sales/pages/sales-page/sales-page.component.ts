@@ -153,12 +153,12 @@ export class SalesPageComponent implements OnInit {
   }
 
   get filteredSellers(): Seller[] {
-    const term = this.sellerQuery.toLowerCase();
+    const term = this.sellerQuery.trim().toLowerCase();
 
     return this.sellers.filter(
       seller =>
         this.sellerDisplayName(seller).toLowerCase().includes(term) ||
-        (seller.document ?? '').toLowerCase().includes(term)
+        this.sellerDocument(seller).toLowerCase().includes(term)
     );
   }
 
@@ -663,14 +663,45 @@ export class SalesPageComponent implements OnInit {
     return this.recipes.find(recipe => recipe.id === id)?.name ?? 'Receta no encontrada';
   }
 
+  sellerDocument(seller: Seller): string {
+    const candidates = [
+      seller.document,
+      seller.identificationNumber,
+      (seller as any).identification_number,
+      (seller as any).documentNumber,
+      (seller as any).document_number,
+      (seller as any).identification,
+      (seller as any).identificationNumber,
+      (seller as any).identification_number_id,
+      (seller as any).identificationNumberId,
+      seller.phone
+    ];
+
+    for (const candidate of candidates) {
+      const value = String(candidate ?? '').trim();
+
+      if (!value) {
+        continue;
+      }
+
+      if (this.looksLikeUuid(value)) {
+        continue;
+      }
+
+      return value;
+    }
+
+    return 'Sin documento';
+  }
+
   sellerDisplayName(seller: Seller): string {
     return (
       seller.fullName ||
       seller.name ||
       `${seller.firstName ?? ''} ${seller.lastName ?? ''}`.trim() ||
+      `${(seller as any).first_name ?? ''} ${(seller as any).last_name ?? ''}`.trim() ||
       seller.email ||
-      seller.identificationNumber ||
-      (seller as any).identification_number ||
+      this.sellerDocument(seller) ||
       seller.phone ||
       'Vendedor sin nombre'
     );
@@ -754,6 +785,11 @@ export class SalesPageComponent implements OnInit {
     }, toast.duration);
 
     this.cdr.markForCheck();
+  }
+
+
+  private looksLikeUuid(value: string): boolean {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
   }
 
   trackByToastId(_: number, toast: ToastMessage): string {
