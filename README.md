@@ -18,7 +18,6 @@ Cuando clones el repositorio por primera vez, debes realizar los siguientes paso
    Contenido base recomendado para `.env.development`:
    ```env
    API_URL=http://localhost:8080/api/v1
-   USER_TOKEN=tu_token_de_sesion_aqui
    LOCATION_ID=a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11
    ```
 

@@ -11,7 +11,7 @@ export const TABLES_AUTH_TOKEN_STORAGE_KEY = 'eatup_token';
 // Si es `true`, `TableService` añadirá el header `Authorization` usando
 // el token guardado en `localStorage` (clave: `TABLES_AUTH_TOKEN_STORAGE_KEY`).
 // Si es `false`, se asume que un interceptor global (p.ej. `authInterceptor`)
-// proporcionará el header (p.ej. usando `ENV.userToken`).
+// proporcionará el header (p.ej. usando token de autenticación).
 export const USE_TABLES_AUTH_FROM_STORAGE = false;
 
 export const DEFAULT_TABLE_VENUE_ID = '';
