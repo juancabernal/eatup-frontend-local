@@ -24,8 +24,14 @@ export class AuthService {
       request
     ).pipe(
       tap(response => {
-        localStorage.setItem(TOKEN_STORAGE_KEY, response.token);
-        this._token.set(response.token);
+        const token = response.token || response.accessToken || response.jwt;
+
+        if (!token) {
+          throw new Error('La respuesta de autenticación no contiene token.');
+        }
+
+        localStorage.setItem(TOKEN_STORAGE_KEY, token);
+        this._token.set(token);
       })
     );
   }

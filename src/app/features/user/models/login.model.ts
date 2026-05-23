@@ -4,7 +4,9 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  token: string;
-  tokenType: string;
-  expiresInSeconds: number;
+  token?: string;
+  accessToken?: string;
+  jwt?: string;
+  tokenType?: string;
+  expiresInSeconds?: number;
 }
