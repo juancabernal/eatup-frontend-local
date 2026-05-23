@@ -110,6 +110,13 @@ export const routes: Routes = [
           import('./features/inventory/categories/categories.routes').then(
             m => m.CATEGORIES_ROUTES
           )
+      },
+      {
+        path: 'inventory/recipes',
+        loadChildren: () =>
+          import('./features/inventory/recipe/recipe.routes').then(
+            m => m.RECIPE_ROUTES
+          )
       }
     ]
   },
