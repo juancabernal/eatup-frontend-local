@@ -24,7 +24,7 @@ export class SellerTableService {
   }
 
   getTables(): Observable<RestaurantTable[]> {
-    const locationId = (window as any).ENV?.LOCATION_ID;
+    const locationId = this.env.locationId;
     const baseTablesEndpoint = `${this.apiRoot}/commercial/api/v1/tables?canOpenNow=true`;
     const endpoints = [
       locationId ? `${baseTablesEndpoint}&venueId=${encodeURIComponent(locationId)}` : baseTablesEndpoint,
