@@ -2,11 +2,13 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { ProductResponse, ProductRequest, ProductPatchRequest } from '../models/product.model';
+import { ENV } from '@config/env.config';
 
 @Injectable({ providedIn: 'root' })
 export class ProductService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = '/inventory/product';
+  private readonly baseUrl =
+  `${ENV.apiUrl}/inventory/product`;
 
   findAll(page: number = 0, size: number = 10, name?: string): Observable<any> {
     let params = new HttpParams()
