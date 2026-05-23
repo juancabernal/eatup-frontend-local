@@ -40,7 +40,6 @@ import { ENV } from '@config/env.config';
               @if (readonly()) {
                 <input [value]="getSupplierName(form.providerId)" disabled />
               } @else {
-                <!-- Fix #3: (ngModelChange) limpia items al cambiar proveedor -->
                 <select [(ngModel)]="form.providerId" (ngModelChange)="onProviderChange()">
                   <option value="">Seleccionar proveedor</option>
                   @for (s of suppliers; track s.id) {
@@ -139,7 +138,7 @@ import { ENV } from '@config/env.config';
                           type="number"
                           min="1"
                           [(ngModel)]="item.quantity"
-                          (ngModelChange)="recalculate()"
+                          (ngModelChange)="recalculate(); saveDraft()"
                           class="input-sm"
                         />
                       }
@@ -153,7 +152,7 @@ import { ENV } from '@config/env.config';
                           min="0"
                           step="0.01"
                           [(ngModel)]="item.unitPrice"
-                          (ngModelChange)="recalculate()"
+                          (ngModelChange)="recalculate(); saveDraft()"
                           class="input-sm"
                         />
                       }
@@ -223,6 +222,7 @@ export class PurchaseFormPageComponent implements OnInit, OnDestroy {
     CANCELLED: 'badge-red'
   };
 
+  private readonly DRAFT_KEY = 'purchase_form_draft';
   private locationId = ENV.locationId;
   private destroy$ = new Subject<void>();
 
@@ -264,6 +264,8 @@ export class PurchaseFormPageComponent implements OnInit, OnDestroy {
     this.loadLists();
 
     if (id) {
+      // En edit/detail carga desde el API, no del draft
+      this.clearDraft();
       this.loading.set(true);
       this.purchaseService
         .getPurchaseById(this.locationId, id)
@@ -278,6 +280,9 @@ export class PurchaseFormPageComponent implements OnInit, OnDestroy {
           this.recalculate();
           this.loading.set(false);
         });
+    } else {
+      // En create, restaura el borrador si existe
+      this.restoreDraft();
     }
   }
 
@@ -305,6 +310,7 @@ export class PurchaseFormPageComponent implements OnInit, OnDestroy {
       this.selectedProductId = '';
       this.recalculate();
     }
+    this.saveDraft();
   }
 
   addProduct(): void {
@@ -320,11 +326,13 @@ export class PurchaseFormPageComponent implements OnInit, OnDestroy {
     });
     this.selectedProductId = '';
     this.recalculate();
+    this.saveDraft();
   }
 
   removeItem(index: number): void {
     this.items.splice(index, 1);
     this.recalculate();
+    this.saveDraft();
   }
 
   recalculate(): void {
@@ -357,12 +365,41 @@ export class PurchaseFormPageComponent implements OnInit, OnDestroy {
       : this.purchaseService.createPurchase(this.locationId, request);
 
     op.subscribe({
-      next: () => this.goBack(),
+      next: () => {
+        this.clearDraft();
+        this.goBack();
+      },
       error: () => this.saving.set(false)
     });
   }
 
   goBack(): void {
+    this.clearDraft();
     this.router.navigate(['/commercial/purchases']);
+  }
+
+  saveDraft(): void {
+    if (this.readonly()) return;
+    sessionStorage.setItem(this.DRAFT_KEY, JSON.stringify({
+      providerId: this.form.providerId,
+      items: this.items
+    }));
+  }
+
+  private restoreDraft(): void {
+    const raw = sessionStorage.getItem(this.DRAFT_KEY);
+    if (!raw) return;
+    try {
+      const draft = JSON.parse(raw);
+      this.form.providerId = draft.providerId ?? '';
+      this.items = draft.items ?? [];
+      this.recalculate();
+    } catch {
+      this.clearDraft();
+    }
+  }
+
+  private clearDraft(): void {
+    sessionStorage.removeItem(this.DRAFT_KEY);
   }
 }
