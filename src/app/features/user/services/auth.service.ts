@@ -18,6 +18,29 @@ export class AuthService {
   readonly token = this._token.asReadonly();
   readonly isAuthenticated = computed(() => !!this._token());
 
+
+  getToken(): string | null {
+    const storedToken = localStorage.getItem(TOKEN_STORAGE_KEY);
+
+    if (storedToken !== this._token()) {
+      this._token.set(storedToken);
+    }
+
+    return storedToken;
+  }
+
+  hasValidSession(): boolean {
+    return !!this.getToken();
+  }
+
+  syncTokenFromStorage(): void {
+    const storedToken = localStorage.getItem(TOKEN_STORAGE_KEY);
+
+    if (storedToken !== this._token()) {
+      this._token.set(storedToken);
+    }
+  }
+
   login(request: LoginRequest): Observable<LoginResponse> {
     return this.http.post<LoginResponse>(
       `${this.baseUrl}/userapi/v1/users/login`,
