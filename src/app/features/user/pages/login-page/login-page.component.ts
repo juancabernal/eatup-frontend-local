@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { AuthService } from '../../services/auth.service';
 
@@ -15,6 +15,7 @@ import { AuthService } from '../../services/auth.service';
 export class LoginPageComponent {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   private readonly cdr = inject(ChangeDetectorRef);
 
   protected email = '';
@@ -36,7 +37,10 @@ export class LoginPageComponent {
       })
     ).subscribe({
       next: () => {
-        this.router.navigate(['/commercial/sales']);
+        const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
+        void this.router.navigateByUrl(
+          returnUrl && returnUrl !== '/login' ? returnUrl : '/commercial/sales'
+        );
         this.cdr.markForCheck();
       },
       error: (err) => {
