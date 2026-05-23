@@ -15,7 +15,7 @@ import { TablesStore } from '../store/tables.store';
     <header class="page-header">
       <div>
         <span>Operación en vivo</span>
-        <h1>Informacion de mesas</h1>
+        <h1>Información de mesas</h1>
         <p>Disponibilidad, ocupación, sesiones y reservas en una vista operativa.</p>
       </div>
       <button type="button" (click)="store.loadDashboard()">Actualizar</button>
