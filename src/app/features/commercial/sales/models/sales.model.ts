@@ -62,17 +62,24 @@ export interface RecipePreparationTrace {
 
 export interface Seller {
   id: string;
-  name?: string;
   fullName?: string;
+  name?: string;
   firstName?: string;
   lastName?: string;
+  first_name?: string;
+  last_name?: string;
   email?: string;
-  identificationNumber?: string;
-  identification_number?: string;
   phone?: string;
   document?: string;
-  active?: boolean;
+  identificationNumber?: string;
+  identification_number?: string;
+  documentNumber?: string;
+  document_number?: string;
+  identification?: string;
+  identificationNumberId?: string;
+  identification_number_id?: string;
   status?: string;
+  active?: boolean;
 }
 
 export interface RestaurantTable {
