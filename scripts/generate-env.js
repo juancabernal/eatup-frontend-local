@@ -25,7 +25,6 @@ function generateEnvFile(envFilePath, outputFilePath) {
 export const ENV = {
   production: false,
   apiUrl: '${envVars.API_URL || '/api/v1'}',
-  userToken: '${envVars.USER_TOKEN || ''}',
   locationId: '${envVars.LOCATION_ID || ''}'
 };
 `;
