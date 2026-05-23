@@ -11,25 +11,19 @@
     "changeOrigin": true,
     "logLevel": "debug"
   },
-  "/commercial": {
+  "/comercialapi": {
     "target": "http://localhost:8080",
     "secure": false,
     "changeOrigin": true,
     "logLevel": "debug"
   },
-  "/inventory": {
+  "/commercial/api": {
     "target": "http://localhost:8080",
     "secure": false,
     "changeOrigin": true,
     "logLevel": "debug"
   },
-  "/userapi": {
-    "target": "http://localhost:8080",
-    "secure": false,
-    "changeOrigin": true,
-    "logLevel": "debug"
-  },
-    "/comercialapi": {
+  "/inventory/api": {
     "target": "http://localhost:8080",
     "secure": false,
     "changeOrigin": true,
