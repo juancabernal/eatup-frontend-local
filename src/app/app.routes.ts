@@ -115,6 +115,6 @@ export const routes: Routes = [
   },
   {
     path: '**',
-    redirectTo: 'commercial/sales'
+    redirectTo: ''
   }
 ];
