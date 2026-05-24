@@ -105,6 +105,11 @@ td {
   border: 1px solid #bfdbfe;
   color: #1d4ed8;
 }
+.alert-success {
+  background: #dcfce7;
+  border: 1px solid #86efac;
+  color: #166534;
+}
 .state-center {
   display: grid;
   place-items: center;

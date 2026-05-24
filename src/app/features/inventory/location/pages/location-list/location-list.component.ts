@@ -18,6 +18,7 @@ export class LocationListComponent implements OnInit {
   filtering = signal(false);
   errorMessage = signal('');
   infoMessage = signal('');
+  successMessage = signal('');
   togglingById = signal<Record<string, boolean>>({});
 
   searchTerm = signal('');
@@ -53,6 +54,10 @@ export class LocationListComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    const navState = this.router.getCurrentNavigation()?.extras?.state ?? history.state;
+    if (navState?.successMessage) {
+      this.successMessage.set(navState.successMessage);
+    }
     this.loadLocations();
   }
 
@@ -100,6 +105,7 @@ export class LocationListComponent implements OnInit {
     if (this.togglingById()[location.id]) return;
 
     this.infoMessage.set('');
+    this.successMessage.set('');
     this.errorMessage.set('');
     this.markToggling(location.id, true);
     const nextStatus = !location.active;
@@ -109,7 +115,7 @@ export class LocationListComponent implements OnInit {
         this.locations.update((list) =>
           list.map((item) => (item.id === location.id ? { ...item, active: nextStatus } : item)),
         );
-        this.infoMessage.set(`La sede se ${nextStatus ? 'activó' : 'inactivó'} correctamente.`);
+        this.successMessage.set(`La sede se ${nextStatus ? 'activó' : 'inactivó'} correctamente.`);
         this.markToggling(location.id, false);
       },
       error: (error) => {

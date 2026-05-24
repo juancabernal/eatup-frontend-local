@@ -21,7 +21,6 @@ export class LocationFormComponent implements OnInit {
   readonly loading = signal(false);
   readonly saving = signal(false);
   readonly errorMessage = signal('');
-  readonly infoMessage = signal('');
   readonly isEditMode = signal(false);
   readonly successMessage = signal('');
 
@@ -60,8 +59,6 @@ export class LocationFormComponent implements OnInit {
 
   submit(): void {
     this.errorMessage.set('');
-    this.infoMessage.set('');
-    this.successMessage.set('');
 
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -82,13 +79,14 @@ export class LocationFormComponent implements OnInit {
 
     request$.subscribe({
       next: () => {
-        this.infoMessage.set('');
-        this.successMessage.set(
-          this.isEditMode()
-            ? 'Su sede se actualizó de manera correcta.'
-            : 'Su sede se creó de manera correcta.',
-        );
         this.saving.set(false);
+        this.router.navigate(['/inv/locations'], {
+          state: {
+            successMessage: this.isEditMode()
+              ? 'Su sede se actualizó de manera correcta.'
+              : 'Su sede se creó de manera correcta.',
+          },
+        });
       },
       error: error => {
         this.errorMessage.set(this.extractBackendMessage(error, 'No se pudo guardar la sede.'));
