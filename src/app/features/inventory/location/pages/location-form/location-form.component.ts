@@ -21,7 +21,6 @@ export class LocationFormComponent implements OnInit {
   readonly loading = signal(false);
   readonly saving = signal(false);
   readonly errorMessage = signal('');
-  readonly infoMessage = signal('');
   readonly isEditMode = signal(false);
 
   private locationId = '';
@@ -59,7 +58,6 @@ export class LocationFormComponent implements OnInit {
 
   submit(): void {
     this.errorMessage.set('');
-    this.infoMessage.set('');
 
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -75,9 +73,14 @@ export class LocationFormComponent implements OnInit {
 
     request$.subscribe({
       next: () => {
-        this.infoMessage.set('Solicitud enviada. La sede se listará cuando el backend procese el registro.');
         this.saving.set(false);
-        setTimeout(() => this.router.navigate(['/inventory/locations']), 350);
+        this.router.navigate(['/inv/locations'], {
+          state: {
+            successMessage: this.isEditMode()
+              ? 'Su sede se actualizó de manera correcta.'
+              : 'Su sede se creó de manera correcta.',
+          },
+        });
       },
       error: error => {
         this.errorMessage.set(this.extractBackendMessage(error, 'No se pudo guardar la sede.'));
@@ -87,7 +90,23 @@ export class LocationFormComponent implements OnInit {
   }
 
   goBack(): void {
-    this.router.navigate(['/inventory/locations']);
+    this.router.navigate(['/inv/locations']);
+  }
+
+  getFieldError(field: string): string {
+    const control = this.form.get(field);
+    if (!control || !control.touched || !control.errors) return '';
+
+    if (control.errors['required']) return 'Este campo es obligatorio.';
+    if (field === 'email' && control.errors['email']) return 'El correo debe incluir @ y un dominio válido.';
+    if (field === 'phoneNumber' && control.errors['pattern']) {
+      return 'El teléfono debe tener entre 7 y 15 números.';
+    }
+    if ((field === 'startTime' || field === 'endTime') && control.errors['pattern']) {
+      return 'La hora debe tener formato HH:mm.';
+    }
+
+    return 'El valor ingresado no es válido.';
   }
 
   private normalizePayload(): LocationRequest {

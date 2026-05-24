@@ -7,18 +7,42 @@
   @if (errorMessage()) {
     <div class="alert alert-error">{{ errorMessage() }}</div>
   }
-  @if (infoMessage()) {
-    <div class="alert alert-info">{{ infoMessage() }}</div>
-  }
 
   <form [formGroup]="form" (ngSubmit)="submit()" class="card form-grid">
     <label>Nombre <input formControlName="name" /></label>
+    @if (getFieldError('name')) {
+      <small class="field-error">{{ getFieldError('name') }}</small>
+    }
+
     <label>Ciudad <input formControlName="city" /></label>
+    @if (getFieldError('city')) {
+      <small class="field-error">{{ getFieldError('city') }}</small>
+    }
+
     <label>Dirección <input formControlName="address" /></label>
+    @if (getFieldError('address')) {
+      <small class="field-error">{{ getFieldError('address') }}</small>
+    }
+
     <label>Email <input formControlName="email" type="email" /></label>
+    @if (getFieldError('email')) {
+      <small class="field-error">{{ getFieldError('email') }}</small>
+    }
+
     <label>Teléfono <input formControlName="phoneNumber" /></label>
+    @if (getFieldError('phoneNumber')) {
+      <small class="field-error">{{ getFieldError('phoneNumber') }}</small>
+    }
+
     <label>Hora de apertura <input formControlName="startTime" type="time" /></label>
+    @if (getFieldError('startTime')) {
+      <small class="field-error">{{ getFieldError('startTime') }}</small>
+    }
+
     <label>Hora de cierre <input formControlName="endTime" type="time" /></label>
+    @if (getFieldError('endTime')) {
+      <small class="field-error">{{ getFieldError('endTime') }}</small>
+    }
     <label class="switch-label"
       >Sede activa <input formControlName="active" type="checkbox"
     /></label>

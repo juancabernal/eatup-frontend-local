@@ -15,6 +15,10 @@
     <div class="alert alert-info">{{ infoMessage() }}</div>
   }
 
+  @if (successMessage()) {
+    <div class="alert alert-success">{{ successMessage() }}</div>
+  }
+
   <section class="card filters-bar">
     <div class="filter-field">
       <label>Buscar</label>
@@ -83,8 +87,12 @@
                 </td>
                 <td>
                   <button class="action-btn" (click)="goToEdit(location)">Editar</button>
-                  <button class="action-btn" (click)="toggleStatus(location)">
-                    {{ location.active ? 'Inactivar' : 'Activar' }}
+                  <button
+                    class="action-btn"
+                    [disabled]="isToggling(location.id)"
+                    (click)="toggleStatus(location)"
+                  >
+                    {{ isToggling(location.id) ? 'Procesando...' : (location.active ? 'Inactivar' : 'Activar') }}
                   </button>
                 </td>
               </tr>
