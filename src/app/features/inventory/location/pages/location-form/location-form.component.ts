@@ -22,6 +22,7 @@ export class LocationFormComponent implements OnInit {
   readonly saving = signal(false);
   readonly errorMessage = signal('');
   readonly isEditMode = signal(false);
+  readonly successMessage = signal('');
 
   private locationId = '';
 
@@ -65,6 +66,11 @@ export class LocationFormComponent implements OnInit {
     }
 
     this.saving.set(true);
+    this.infoMessage.set(
+      this.isEditMode()
+        ? 'Espere un momento, su sede se está actualizando.'
+        : 'Espere un momento, su sede se está creando.',
+    );
     const payload = this.normalizePayload();
 
     const request$ = this.isEditMode()
