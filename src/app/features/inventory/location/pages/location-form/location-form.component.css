@@ -72,6 +72,11 @@ input {
   border: 1px solid #bfdbfe;
   color: #1d4ed8;
 }
+.field-error {
+  color: #b91c1c;
+  margin-top: -0.3rem;
+  font-size: 0.82rem;
+}
 @media (max-width: 840px) {
   .form-grid {
     grid-template-columns: 1fr;
