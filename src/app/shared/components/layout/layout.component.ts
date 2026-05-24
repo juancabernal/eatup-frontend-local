@@ -342,6 +342,7 @@ export class LayoutComponent {
       expanded: false,
       features: [
         { name: 'Descuentos', path: '/commercial/discount' },
+        { name: 'Descuentos por Cliente', path: '/commercial/customer-discount' },
         { name: 'Vendedores', path: '/commercial/seller' },
         { name: 'Compras',    path: '/commercial/purchases' },
         { name: 'Mesas',      path: '/commercial/tables' },

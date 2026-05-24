@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormGroup, FormControl, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { ClientService, Client } from '@commercial/customer-discount/services/client';
@@ -26,7 +26,8 @@ function dateRangeValidator(group: AbstractControl): ValidationErrors | null {
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterLink],
   templateUrl: './customer-discount-form-page.html',
-  styleUrl: './customer-discount-form-page.css'
+  styleUrl: './customer-discount-form-page.css',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class CustomerDiscountFormPage implements OnInit {
   private readonly service         = inject(CustomerDiscountService);
@@ -36,12 +37,13 @@ export class CustomerDiscountFormPage implements OnInit {
   private readonly clientService   = inject(ClientService);
   private readonly locationService = inject(LocationService);
 
-  isEditing    = signal(false);
-  submitting   = signal(false);
-  discounts    = signal<Discount[]>([]);
-  clients      = signal<Client[]>([]);
-  locationName = signal('Cargando...');
-  generalError = signal('');
+  protected readonly isEditing    = signal(false);
+  protected readonly submitting   = signal(false);
+  protected readonly discounts    = signal<Discount[]>([]);
+  protected readonly clients      = signal<Client[]>([]);
+  protected readonly locationName = signal('Cargando...');
+  protected readonly generalError = signal('');
+  protected readonly formSubmitted = signal(false);
 
   readonly locationId = ENV.locationId ?? '';
   readonly today = (() => {
@@ -101,7 +103,7 @@ export class CustomerDiscountFormPage implements OnInit {
   save(): void {
     if (this.submitting()) return;
     this.generalError.set('');
-    this.form.markAllAsTouched();
+    this.formSubmitted.set(true);
     if (this.form.invalid) return;
 
     this.submitting.set(true);
@@ -130,5 +132,20 @@ export class CustomerDiscountFormPage implements OnInit {
         this.generalError.set(err.error?.message ?? 'Error al guardar.');
       }
     });
+  }
+
+  protected showFieldError(controlName: string): boolean {
+    const ctrl = this.form.get(controlName);
+    return !!ctrl && ctrl.invalid && (ctrl.touched || this.formSubmitted());
+  }
+
+  protected fieldError(controlName: string): string {
+    const ctrl = this.form.get(controlName);
+    if (!ctrl || ctrl.valid) return '';
+    if (ctrl.errors?.['required'])     return 'Este campo es obligatorio.';
+    if (ctrl.errors?.['backend'])      return ctrl.errors['backend'];
+    if (this.form.errors?.['endDatePast'])     return 'La fecha de fin no puede ser anterior a hoy.';
+    if (this.form.errors?.['endBeforeStart']) return 'La fecha de fin no puede ser anterior a la de inicio.';
+    return 'Valor no válido.';
   }
 }

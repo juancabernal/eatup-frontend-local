@@ -1,6 +1,6 @@
 <div class="page-header">
   <div>
-    <h1>Clientes por Descuento</h1>
+    <h1>Descuentos por Cliente</h1>
     <p>Gestión de descuentos asignados a clientes.</p>
   </div>
   <a routerLink="new" class="btn-primary">+ Nueva Asignación</a>
@@ -21,7 +21,7 @@
          (ngModelChange)="onSearch($event)" />
 </div>
 <span class="result-count">
-  {{ (items() | customerDiscountFilter:search():discountMap():clientMap()).length }} resultado(s)
+  {{ filteredItems().length }} resultado(s)
 </span>
 
 @if (loading()) { <p class="loading">Cargando...</p> }
@@ -42,7 +42,7 @@
         </tr>
       </thead>
       <tbody>
-        @for (item of paginated; track item.id) {
+        @for (item of paginated(); track item.id) {
           <tr>
             <td>{{ discountName(item.discountId) }}</td>
             <td>{{ clientName(item.customerId) }}</td>
@@ -80,8 +80,8 @@
 
     <div class="pagination">
       <button (click)="goToPage(currentPage() - 1)" [disabled]="currentPage() === 1">← Anterior</button>
-      <span>Página {{ currentPage() }} de {{ totalPages || 1 }}</span>
-      <button (click)="goToPage(currentPage() + 1)" [disabled]="currentPage() === totalPages || totalPages === 0">Siguiente →</button>
+      <span>Página {{ currentPage() }} de {{ totalPages() || 1 }}</span>
+      <button (click)="goToPage(currentPage() + 1)" [disabled]="currentPage() === totalPages() || totalPages() === 0">Siguiente →</button>
     </div>
   </div>
 }

@@ -1,7 +1,8 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { RouterLink, Router, NavigationEnd } from '@angular/router';
-import { filter } from 'rxjs/operators';
+import { Subject } from 'rxjs';
+import { filter, finalize, takeUntil } from 'rxjs/operators';
 import { CustomerDiscountService } from '@commercial/customer-discount/services/customer-discount';
 import { CustomerDiscount } from '@commercial/customer-discount/models/customer-discount.model';
 import { DiscountService } from '@commercial/discount/services/discount';
@@ -16,12 +17,13 @@ import { CustomerDiscountExpiryBadgeComponent } from '@commercial/customer-disco
 @Component({
   selector: 'app-customer-discount-list-page',
   standalone: true,
-  imports: [CommonModule, RouterLink, DatePipe, FormsModule, CustomerDiscountFilterPipe, CustomerDiscountExpiryBadgeComponent],
+  imports: [CommonModule, RouterLink, DatePipe, FormsModule, CustomerDiscountExpiryBadgeComponent],
   templateUrl: './customer-discount-list-page.html',
-  styleUrl: './customer-discount-list-page.css'
+  styleUrl: './customer-discount-list-page.css',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 
-export class CustomerDiscountListPage implements OnInit {
+export class CustomerDiscountListPage implements OnInit, OnDestroy {
   private readonly service         = inject(CustomerDiscountService);
   private readonly discountService = inject(DiscountService);
   private readonly clientService   = inject(ClientService);
@@ -30,18 +32,18 @@ export class CustomerDiscountListPage implements OnInit {
   private excludeId = '';
 
 
-  items        = signal<CustomerDiscount[]>([]);
-  discountMap  = signal<Map<string, string>>(new Map());
-  clientMap    = signal<Map<string, string>>(new Map());
-  locationName = signal('Cargando...');
-  loading      = signal(false);
-  error        = signal('');
-  currentPage  = signal(1);
-  readonly pageSize = 5;
-
-  search      = signal('');
+  protected readonly items        = signal<CustomerDiscount[]>([]);
+  protected readonly discountMap  = signal<Map<string, string>>(new Map());
+  protected readonly clientMap    = signal<Map<string, string>>(new Map());
+  protected readonly locationName = signal('Cargando...');
+  protected readonly loading      = signal(false);
+  protected readonly error        = signal('');
+  protected readonly currentPage  = signal(1);
+  protected readonly pageSize     = 5;
+  protected readonly search       = signal('');
 
   private readonly filterPipe = new CustomerDiscountFilterPipe();
+  private readonly destroy$ = new Subject<void>();
 
   ngOnInit(): void {
     this.excludeId = history.state?.deletedId ?? '';
@@ -66,7 +68,8 @@ export class CustomerDiscountListPage implements OnInit {
 
     this.router.events.pipe(
       filter(e => e instanceof NavigationEnd),
-      filter((e: any) => e.urlAfterRedirects === '/commercial/customer-discount')
+      filter((e: any) => e.urlAfterRedirects === '/commercial/customer-discount'),
+      takeUntil(this.destroy$)
     ).subscribe(() => this.load());
   }
 
@@ -76,13 +79,14 @@ export class CustomerDiscountListPage implements OnInit {
   load(): void {
     this.loading.set(true);
     this.error.set('');
-    this.service.getAll().subscribe({
+    this.service.getAll().pipe(
+      finalize(() => this.loading.set(false))
+    ).subscribe({
       next: (data) => {
         const list = this.excludeId ? data.filter(i => i.id !== this.excludeId) : data;
         this.items.set(list);
-        this.loading.set(false);
       },
-      error: (err)  => { this.error.set(err.error?.message ?? 'Error al cargar.'); this.loading.set(false); }
+      error: (err) => this.error.set(err.error?.message ?? 'Error al cargar.')
     });
   }
 
@@ -94,22 +98,26 @@ export class CustomerDiscountListPage implements OnInit {
     });
   }
 
-  get filteredItems(): CustomerDiscount[] {
-    return this.filterPipe.transform(
-      this.items(), this.search(), this.discountMap(), this.clientMap()
-    );
-  }
+  protected readonly filteredItems = computed(() =>
+    this.filterPipe.transform(this.items(), this.search(), this.discountMap(), this.clientMap())
+  );
 
-  get paginated(): CustomerDiscount[] {
+  protected readonly totalPages = computed(() =>
+    Math.ceil(this.filteredItems().length / this.pageSize)
+  );
+
+  protected readonly paginated = computed(() => {
     const start = (this.currentPage() - 1) * this.pageSize;
-    return this.filteredItems.slice(start, start + this.pageSize);
-  }
-
-  get totalPages(): number { return Math.ceil(this.filteredItems.length / this.pageSize); }
-
+    return this.filteredItems().slice(start, start + this.pageSize);
+  });
+  
+  goToPage(page: number): void {
+  if (page >= 1 && page <= this.totalPages()) this.currentPage.set(page);
+}
   onSearch(value: string): void { this.search.set(value); this.currentPage.set(1); }
 
-  goToPage(page: number): void {
-    if (page >= 1 && page <= this.totalPages) this.currentPage.set(page);
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 }
