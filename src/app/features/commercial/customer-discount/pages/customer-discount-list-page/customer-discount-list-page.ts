@@ -12,12 +12,12 @@ import { ENV } from '@config/env.config';
 import { FormsModule } from '@angular/forms';
 import { CustomerDiscountFilterPipe } from '@commercial/customer-discount/pipes/customer-discount-filter.pipe';
 import { CustomerDiscountExpiryBadgeComponent } from '@commercial/customer-discount/components/customer-discount-expiry-badge/customer-discount-expiry-badge';
-
+import { DiscountStatusBadgeComponent } from '@commercial/discount/components/discount-status-badge/discount-status-badge';
 
 @Component({
   selector: 'app-customer-discount-list-page',
   standalone: true,
-  imports: [CommonModule, RouterLink, DatePipe, FormsModule, CustomerDiscountExpiryBadgeComponent],
+  imports: [CommonModule, RouterLink, DatePipe, FormsModule, CustomerDiscountExpiryBadgeComponent, DiscountStatusBadgeComponent],
   templateUrl: './customer-discount-list-page.html',
   styleUrl: './customer-discount-list-page.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -34,6 +34,7 @@ export class CustomerDiscountListPage implements OnInit, OnDestroy {
 
   protected readonly items        = signal<CustomerDiscount[]>([]);
   protected readonly discountMap  = signal<Map<string, string>>(new Map());
+  protected readonly discountActiveMap = signal<Map<string, boolean>>(new Map());
   protected readonly clientMap    = signal<Map<string, string>>(new Map());
   protected readonly locationName = signal('Cargando...');
   protected readonly loading      = signal(false);
@@ -49,7 +50,14 @@ export class CustomerDiscountListPage implements OnInit, OnDestroy {
     this.excludeId = history.state?.deletedId ?? '';
 
     this.discountService.getAll().subscribe({
-      next: (data) => this.discountMap.set(new Map(data.map(d => [d.id, `${d.description} (${d.percentage}%)`])))
+      next: (data) => {
+        this.discountMap.set(
+          new Map(data.map(d => [d.id, `${d.description} (${d.percentage}%)`]))
+        );
+        this.discountActiveMap.set(
+          new Map(data.map(d => [d.id, d.status]))
+        );
+      }
     });
 
     this.clientService.getAll().subscribe({
@@ -73,8 +81,9 @@ export class CustomerDiscountListPage implements OnInit, OnDestroy {
     ).subscribe(() => this.load());
   }
 
-  discountName(id: string): string { return this.discountMap().get(id) ?? '—'; }
-  clientName(id: string): string   { return this.clientMap().get(id)   ?? '—'; }
+  protected discountName(id: string): string  { return this.discountMap().get(id) ?? '—'; }
+  protected clientName(id: string): string    { return this.clientMap().get(id)   ?? '—'; }
+  protected discountActive(id: string): boolean { return this.discountActiveMap().get(id) ?? true; }
 
   load(): void {
     this.loading.set(true);

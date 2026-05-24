@@ -84,10 +84,10 @@
       <input id="endDate" type="date" class="input input-short"
              formControlName="endDate" [min]="today" />
       <span class="field-hint">Déjalo vacío si no tiene vencimiento.</span>
-      @if (form.errors?.['endDatePast'] && endDateCtrl.touched) {
+      @if (form.errors?.['endDatePast'] && (endDateCtrl.touched || formSubmitted())) {
         <span class="field-error">La fecha de vencimiento no puede ser en el pasado.</span>
       }
-      @if (form.errors?.['endBeforeStart'] && endDateCtrl.touched) {
+      @if (form.errors?.['endBeforeStart'] && (endDateCtrl.touched || formSubmitted())) {
         <span class="field-error">La fecha de vencimiento debe ser posterior a la fecha de inicio.</span>
       }
     </div>

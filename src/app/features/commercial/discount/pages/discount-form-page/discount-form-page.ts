@@ -88,7 +88,7 @@ export class DiscountFormPage implements OnInit {
       : this.discountService.create({ categoryId: categoryId!, percentage: percentage!, description: description!.trim() });
 
     request$.subscribe({
-      next: () => { this.submitting.set(false); setTimeout(() => this.router.navigate(['/commercial/discount']), 500); },
+      next: () => { this.submitting.set(false); void this.router.navigate(['/commercial/discount']); },
       error: (err) => {
         this.submitting.set(false);
         const b = err.error;

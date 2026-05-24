@@ -23,7 +23,6 @@ export class DiscountListPage implements OnInit, OnDestroy {
   private readonly discountService = inject(DiscountService);
   private readonly router = inject(Router);
   private readonly categoryService = inject(CategoryService);
-  private excludeId = '';
 
   protected readonly discounts   = signal<Discount[]>([]);
   protected readonly categoryMap = signal<Map<string, string>>(new Map());
@@ -42,14 +41,13 @@ export class DiscountListPage implements OnInit, OnDestroy {
       next: (data) => this.categoryMap.set(new Map(data.map(c => [c.id, c.name])))
     });
 
-    this.excludeId = history.state?.deletedId ?? '';
-    this.loadDiscounts();
+        this.loadDiscounts();
 
     this.router.events.pipe(
       filter(e => e instanceof NavigationEnd),
       filter((e: any) => e.urlAfterRedirects === '/commercial/discount'),
       takeUntil(this.destroy$)
-    ).subscribe(() => setTimeout(() => this.loadDiscounts(), 800));
+    ).subscribe(() => this.loadDiscounts());
   }
 
   categoryName(id: string): string {
@@ -63,19 +61,8 @@ export class DiscountListPage implements OnInit, OnDestroy {
       retry({ count: 2, delay: 800 }),
       finalize(() => this.loading.set(false))
     ).subscribe({
-      next: (data) => {
-        const list = this.excludeId ? data.filter(d => d.id !== this.excludeId) : data;
-        this.discounts.set(list);
-      },
+            next: (data) => this.discounts.set(data),
       error: (err) => this.error.set(err.error?.message ?? 'Error al cargar.')
-    });
-  }
-
-  delete(id: string): void {
-    if (!confirm('¿Eliminar este descuento?')) return;
-    this.discounts.update(list => list.filter(d => d.id !== id));
-    this.discountService.delete(id).subscribe({
-      error: () => { this.error.set('Error al eliminar.'); this.loadDiscounts(); }
     });
   }
 

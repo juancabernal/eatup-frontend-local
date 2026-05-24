@@ -28,8 +28,18 @@
 @if (error()) { <div class="error-box"><strong>Error:</strong> {{ error() }}</div> }
 
 @if (!loading() && !error()) {
-  <div class="table-container">
+    <div class="table-container">
+    <div class="table-scroll">
     <table>
+      <colgroup>
+        <col style="width:25%">
+        <col style="width:20%">
+        <col style="width:13%">
+        <col style="width:10%">
+        <col style="width:10%">
+        <col style="width:13%">
+        <col style="width:9%">
+      </colgroup>
       <thead>
         <tr>
           <th>Descuento</th>
@@ -44,8 +54,15 @@
       <tbody>
         @for (item of paginated(); track item.id) {
           <tr>
-            <td>{{ discountName(item.discountId) }}</td>
-            <td>{{ clientName(item.customerId) }}</td>
+             <td>
+              <div class="discount-cell">
+                <span>{{ discountName(item.discountId) }}</span>
+                @if (!discountActive(item.discountId)) {
+                  <app-discount-status-badge [active]="false" />
+                }
+              </div>
+            </td>
+                        <td class="cell-truncate" [title]="clientName(item.customerId)">{{ clientName(item.customerId) }}</td>
             <td>{{ locationName() }}</td>
             <td>{{ item.assignedAt ? (item.assignedAt | date:'dd/MM/yyyy') : '—' }}</td>
             <td>{{ item.startDate ? (item.startDate | date:'dd/MM/yyyy') : 'Sin inicio' }}</td>
@@ -76,7 +93,8 @@
           <tr><td colspan="7" class="empty">No hay asignaciones registradas.</td></tr>
         }
       </tbody>
-    </table>
+        </table>
+    </div>
 
     <div class="pagination">
       <button (click)="goToPage(currentPage() - 1)" [disabled]="currentPage() === 1">← Anterior</button>

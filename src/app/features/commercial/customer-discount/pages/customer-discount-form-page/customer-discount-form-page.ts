@@ -125,7 +125,7 @@ export class CustomerDiscountFormPage implements OnInit {
     req$.subscribe({
       next: () => {
         this.submitting.set(false);
-        setTimeout(() => this.router.navigate(['/commercial/customer-discount']), 500);
+        void this.router.navigate(['/commercial/customer-discount']);
       },
       error: (err) => {
         this.submitting.set(false);

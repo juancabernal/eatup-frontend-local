@@ -11,7 +11,7 @@
 .stat-value { font-size:2rem; font-weight:700; color:#1e293b; line-height:1; }
 
 .table-container { background:white; border-radius:1rem; border:1px solid #e2e8f0; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,0.05); }
-table { width:100%; border-collapse:collapse; }
+table { width:100%; border-collapse:collapse; table-layout:fixed; min-width:750px; }
 thead { background:linear-gradient(to right,#fff7ed,#fff); }
 th { padding:1rem 1.25rem; text-align:left; font-size:0.75rem; font-weight:700; text-transform:uppercase; color:#94a3b8; border-bottom:1px solid #e2e8f0; letter-spacing:0.05em; }
 td { padding:1rem 1.25rem; border-bottom:1px solid #f1f5f9; font-size:0.9rem; color:#334155; vertical-align:middle; }
@@ -109,3 +109,29 @@ tbody tr:hover {
 .search-input { flex:1; max-width:380px; padding:0.6rem 1rem; border:1px solid #e2e8f0; border-radius:0.5rem; font-size:0.9rem; color:#1e293b; outline:none; transition:border-color 0.2s; }
 .search-input:focus { border-color:var(--color-primary); box-shadow:0 0 0 3px rgba(255,107,53,0.1); }
 .result-count { font-size:0.8rem; color:#94a3b8; margin-bottom:0.75rem; display:block; }
+
+.discount-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+
+.discount-cell span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.cell-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 0;
+}

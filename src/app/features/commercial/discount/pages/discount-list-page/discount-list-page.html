@@ -52,9 +52,19 @@
 }
 
 @if (!loading() && !error()) {
-  <div class="table-container">
+    <div class="table-container">
+    <div class="table-scroll">
     <table>
-    <thead>
+      <colgroup>
+        <col style="width:30%">
+        <col style="width:18%">
+        <col style="width:9%">
+        <col style="width:12%">
+        <col style="width:12%">
+        <col style="width:9%">
+        <col style="width:10%">
+      </colgroup>
+      <thead>
       <tr>
         <th>Descripción</th>
         <th>Categoría</th>
@@ -68,8 +78,8 @@
       <tbody>
         @for (discount of paginatedDiscounts(); track discount.id) {
           <tr>
-            <td>{{ discount.description }}</td>
-            <td>{{ categoryName(discount.categoryId) }}</td>
+                        <td class="cell-truncate" [title]="discount.description">{{ discount.description }}</td>
+            <td class="cell-truncate" [title]="categoryName(discount.categoryId)">{{ categoryName(discount.categoryId) }}</td>
             <td><span class="pct-badge">{{ discount.percentage }}%</span></td>
             <td>{{ discount.createdAt ? (discount.createdAt | date:'dd/MM/yyyy') : '—' }}</td>
             <td>{{ discount.modifiedAt ? (discount.modifiedAt | date:'dd/MM/yyyy') : '—' }}</td>
@@ -104,7 +114,8 @@
           </tr>
         }
       </tbody>
-    </table>
+        </table>
+    </div>
 
     <div class="pagination">
       <button (click)="goToPage(currentPage() - 1)" [disabled]="currentPage() === 1">← Anterior</button>
