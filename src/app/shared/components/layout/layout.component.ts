@@ -402,7 +402,7 @@ export class LayoutComponent {
         { name: 'Categorías', path: '/inventory/categories' },
         { name: 'Productos', path: '/inventory/product' },
         { name: 'Recetas', path: '/inventory/recipes' },
-        { name: 'Sedes', path: '/inventory/locations' },
+        { name: 'Sedes', path: '/inv/locations' },
       ],
     },
   ]);

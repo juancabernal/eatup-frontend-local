@@ -95,7 +95,7 @@ export const routes: Routes = [
           ),
       },
       {
-        path: 'inventory/locations',
+        path: 'inv/locations',
         loadChildren: () =>
           import('./features/inventory/location/location.routes').then((m) => m.LOCATION_ROUTES),
       },

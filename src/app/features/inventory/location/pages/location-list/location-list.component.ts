@@ -10,7 +10,7 @@ import { LocationService } from '../../services/location.service';
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './location-list.component.html',
-  styleUrl: './location-list.component.css'
+  styleUrl: './location-list.component.css',
 })
 export class LocationListComponent implements OnInit {
   locations = signal<LocationResponse[]>([]);
@@ -29,18 +29,18 @@ export class LocationListComponent implements OnInit {
     let list = this.locations();
 
     if (term) {
-      list = list.filter(location =>
+      list = list.filter((location) =>
         [location.name, location.city, location.address, location.email, location.phoneNumber]
           .join(' ')
           .toLowerCase()
-          .includes(term)
+          .includes(term),
       );
     }
 
     if (this.statusFilter() === 'ACTIVE') {
-      list = list.filter(location => location.active);
+      list = list.filter((location) => location.active);
     } else if (this.statusFilter() === 'INACTIVE') {
-      list = list.filter(location => !location.active);
+      list = list.filter((location) => !location.active);
     }
 
     return list;
@@ -48,7 +48,7 @@ export class LocationListComponent implements OnInit {
 
   constructor(
     private readonly locationService: LocationService,
-    private readonly router: Router
+    private readonly router: Router,
   ) {}
 
   ngOnInit(): void {
@@ -59,14 +59,16 @@ export class LocationListComponent implements OnInit {
     this.loading.set(true);
     this.errorMessage.set('');
     this.locationService.list().subscribe({
-      next: data => {
+      next: (data) => {
         this.locations.set(data ?? []);
         this.loading.set(false);
       },
-      error: error => {
-        this.errorMessage.set(this.extractBackendMessage(error, 'No se pudieron cargar las sedes.'));
+      error: (error) => {
+        this.errorMessage.set(
+          this.extractBackendMessage(error, 'No se pudieron cargar las sedes.'),
+        );
         this.loading.set(false);
-      }
+      },
     });
   }
 
@@ -86,11 +88,11 @@ export class LocationListComponent implements OnInit {
   }
 
   goToCreate(): void {
-    this.router.navigate(['/inventory/locations/create']);
+    this.router.navigate(['/inv/locations/create']);
   }
 
   goToEdit(location: LocationResponse): void {
-    this.router.navigate(['/inventory/locations', location.id, 'edit']);
+    this.router.navigate(['/inv/locations', location.id, 'edit']);
   }
 
   toggleStatus(location: LocationResponse): void {
@@ -98,17 +100,19 @@ export class LocationListComponent implements OnInit {
     this.errorMessage.set('');
     this.locationService.updateStatus(location.id, { active: !location.active }).subscribe({
       next: () => {
-        this.infoMessage.set('Solicitud enviada. La sede se listará cuando el backend procese el registro.');
+        this.infoMessage.set(
+          'Solicitud enviada. La sede se listará cuando el backend procese el registro.',
+        );
         this.loadLocations();
       },
-      error: error => {
+      error: (error) => {
         this.errorMessage.set(
           this.extractBackendMessage(
             error,
-            `No se pudo ${location.active ? 'inactivar' : 'activar'} la sede.`
-          )
+            `No se pudo ${location.active ? 'inactivar' : 'activar'} la sede.`,
+          ),
         );
-      }
+      },
     });
   }
 
@@ -121,8 +125,10 @@ export class LocationListComponent implements OnInit {
   private extractBackendMessage(error: any, fallback: string): string {
     if (typeof error?.error === 'string' && error.error.trim()) return error.error;
     if (typeof error?.message === 'string' && error.message.trim()) return error.message;
-    if (typeof error?.error?.message === 'string' && error.error.message.trim()) return error.error.message;
-    if (typeof error?.error?.detail === 'string' && error.error.detail.trim()) return error.error.detail;
+    if (typeof error?.error?.message === 'string' && error.error.message.trim())
+      return error.error.message;
+    if (typeof error?.error?.detail === 'string' && error.error.detail.trim())
+      return error.error.detail;
 
     const validationErrors = error?.error?.errors;
     if (Array.isArray(validationErrors) && validationErrors.length > 0) {
