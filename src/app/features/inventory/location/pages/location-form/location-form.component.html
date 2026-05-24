@@ -1,0 +1,33 @@
+<div class="location-form-page">
+  <header class="page-header">
+    <h1>{{ isEditMode() ? 'Editar sede' : 'Nueva sede' }}</h1>
+    <button type="button" class="btn-ghost" (click)="goBack()">Volver</button>
+  </header>
+
+  @if (errorMessage()) {
+    <div class="alert alert-error">{{ errorMessage() }}</div>
+  }
+  @if (infoMessage()) {
+    <div class="alert alert-info">{{ infoMessage() }}</div>
+  }
+
+  <form [formGroup]="form" (ngSubmit)="submit()" class="card form-grid">
+    <label>Nombre <input formControlName="name" /></label>
+    <label>Ciudad <input formControlName="city" /></label>
+    <label>Dirección <input formControlName="address" /></label>
+    <label>Email <input formControlName="email" type="email" /></label>
+    <label>Teléfono <input formControlName="phoneNumber" /></label>
+    <label>Hora de apertura <input formControlName="startTime" type="time" /></label>
+    <label>Hora de cierre <input formControlName="endTime" type="time" /></label>
+    <label class="switch-label"
+      >Sede activa <input formControlName="active" type="checkbox"
+    /></label>
+
+    <div class="form-actions">
+      <button type="button" class="btn-ghost" (click)="goBack()">Cancelar</button>
+      <button type="submit" class="btn-primary" [disabled]="saving()">
+        {{ saving() ? 'Guardando...' : 'Guardar sede' }}
+      </button>
+    </div>
+  </form>
+</div>
