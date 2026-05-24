@@ -21,7 +21,6 @@ export class LocationFormComponent implements OnInit {
   readonly loading = signal(false);
   readonly saving = signal(false);
   readonly errorMessage = signal('');
-  readonly infoMessage = signal('');
   readonly isEditMode = signal(false);
 
   private locationId = '';
@@ -36,6 +35,10 @@ export class LocationFormComponent implements OnInit {
     endTime: ['', [Validators.required, Validators.pattern(/^([01]\d|2[0-3]):([0-5]\d)$/)]],
     active: [true, [Validators.required]]
   });
+
+  constructor() {
+    this.form.setValidators(this.timeRangeValidator);
+  }
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
@@ -59,7 +62,6 @@ export class LocationFormComponent implements OnInit {
 
   submit(): void {
     this.errorMessage.set('');
-    this.infoMessage.set('');
 
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -75,9 +77,14 @@ export class LocationFormComponent implements OnInit {
 
     request$.subscribe({
       next: () => {
-        this.infoMessage.set('Solicitud enviada. La sede se listará cuando el backend procese el registro.');
         this.saving.set(false);
-        setTimeout(() => this.router.navigate(['/inventory/locations']), 350);
+        this.router.navigate(['/inv/locations'], {
+          state: {
+            successMessage: this.isEditMode()
+              ? 'Su sede se actualizó de manera correcta.'
+              : 'Su sede se creó de manera correcta.',
+          },
+        });
       },
       error: error => {
         this.errorMessage.set(this.extractBackendMessage(error, 'No se pudo guardar la sede.'));
@@ -87,7 +94,29 @@ export class LocationFormComponent implements OnInit {
   }
 
   goBack(): void {
-    this.router.navigate(['/inventory/locations']);
+    this.router.navigate(['/inv/locations']);
+  }
+
+  getFieldError(field: string): string {
+    const control = this.form.get(field);
+    if (!control || !control.touched || !control.errors) return '';
+
+    if (control.errors['required']) return 'Este campo es obligatorio.';
+    if (field === 'email' && control.errors['email']) return 'El correo debe incluir @ y un dominio válido.';
+    if (field === 'phoneNumber' && control.errors['pattern']) {
+      return 'El teléfono debe tener entre 7 y 15 números.';
+    }
+    if ((field === 'startTime' || field === 'endTime') && control.errors['pattern']) {
+      return 'La hora debe tener formato HH:mm.';
+    }
+    if (field === 'startTime' && this.form.errors?.['invalidTimeRange']) {
+      return 'La hora de apertura debe ser menor que la hora de cierre.';
+    }
+    if (field === 'endTime' && this.form.errors?.['invalidTimeRange']) {
+      return 'La hora de cierre debe ser mayor que la hora de apertura.';
+    }
+
+    return 'El valor ingresado no es válido.';
   }
 
   private normalizePayload(): LocationRequest {
@@ -104,6 +133,19 @@ export class LocationFormComponent implements OnInit {
       endTime: this.normalizeTime(raw.endTime ?? '')
     };
   }
+
+  private timeRangeValidator = () => {
+    const start = this.form?.get('startTime')?.value;
+    const end = this.form?.get('endTime')?.value;
+    if (!start || !end) return null;
+
+    const toMinutes = (value: string): number => {
+      const [h, m] = value.split(':').map(Number);
+      return h * 60 + m;
+    };
+
+    return toMinutes(start) < toMinutes(end) ? null : { invalidTimeRange: true };
+  };
 
   private normalizeTime(value: string): string {
     const match = value.match(/(\d{1,2}):(\d{2})/);

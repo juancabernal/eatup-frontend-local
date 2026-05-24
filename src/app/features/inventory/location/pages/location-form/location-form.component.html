@@ -7,18 +7,42 @@
   @if (errorMessage()) {
     <div class="alert alert-error">{{ errorMessage() }}</div>
   }
-  @if (infoMessage()) {
-    <div class="alert alert-info">{{ infoMessage() }}</div>
-  }
 
   <form [formGroup]="form" (ngSubmit)="submit()" class="card form-grid">
     <label>Nombre <input formControlName="name" /></label>
+    <small class="field-error" [class.visible]="!!getFieldError('name')">
+      {{ getFieldError('name') || ' ' }}
+    </small>
+
     <label>Ciudad <input formControlName="city" /></label>
+    <small class="field-error" [class.visible]="!!getFieldError('city')">
+      {{ getFieldError('city') || ' ' }}
+    </small>
+
     <label>Dirección <input formControlName="address" /></label>
+    <small class="field-error" [class.visible]="!!getFieldError('address')">
+      {{ getFieldError('address') || ' ' }}
+    </small>
+
     <label>Email <input formControlName="email" type="email" /></label>
+    <small class="field-error" [class.visible]="!!getFieldError('email')">
+      {{ getFieldError('email') || ' ' }}
+    </small>
+
     <label>Teléfono <input formControlName="phoneNumber" /></label>
+    <small class="field-error" [class.visible]="!!getFieldError('phoneNumber')">
+      {{ getFieldError('phoneNumber') || ' ' }}
+    </small>
+
     <label>Hora de apertura <input formControlName="startTime" type="time" /></label>
+    <small class="field-error" [class.visible]="!!getFieldError('startTime')">
+      {{ getFieldError('startTime') || ' ' }}
+    </small>
+
     <label>Hora de cierre <input formControlName="endTime" type="time" /></label>
+    <small class="field-error" [class.visible]="!!getFieldError('endTime')">
+      {{ getFieldError('endTime') || ' ' }}
+    </small>
     <label class="switch-label"
       >Sede activa <input formControlName="active" type="checkbox"
     /></label>
