@@ -23,6 +23,7 @@ export class LocationFormComponent implements OnInit {
   readonly errorMessage = signal('');
   readonly infoMessage = signal('');
   readonly isEditMode = signal(false);
+  readonly successMessage = signal('');
 
   private locationId = '';
 
@@ -60,6 +61,7 @@ export class LocationFormComponent implements OnInit {
   submit(): void {
     this.errorMessage.set('');
     this.infoMessage.set('');
+    this.successMessage.set('');
 
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -67,6 +69,11 @@ export class LocationFormComponent implements OnInit {
     }
 
     this.saving.set(true);
+    this.infoMessage.set(
+      this.isEditMode()
+        ? 'Espere un momento, su sede se está actualizando.'
+        : 'Espere un momento, su sede se está creando.',
+    );
     const payload = this.normalizePayload();
 
     const request$ = this.isEditMode()
@@ -75,9 +82,13 @@ export class LocationFormComponent implements OnInit {
 
     request$.subscribe({
       next: () => {
-        this.infoMessage.set('Solicitud enviada. La sede se listará cuando el backend procese el registro.');
+        this.infoMessage.set('');
+        this.successMessage.set(
+          this.isEditMode()
+            ? 'Su sede se actualizó de manera correcta.'
+            : 'Su sede se creó de manera correcta.',
+        );
         this.saving.set(false);
-        setTimeout(() => this.router.navigate(['/inventory/locations']), 350);
       },
       error: error => {
         this.errorMessage.set(this.extractBackendMessage(error, 'No se pudo guardar la sede.'));
@@ -87,7 +98,23 @@ export class LocationFormComponent implements OnInit {
   }
 
   goBack(): void {
-    this.router.navigate(['/inventory/locations']);
+    this.router.navigate(['/inv/locations']);
+  }
+
+  getFieldError(field: string): string {
+    const control = this.form.get(field);
+    if (!control || !control.touched || !control.errors) return '';
+
+    if (control.errors['required']) return 'Este campo es obligatorio.';
+    if (field === 'email' && control.errors['email']) return 'El correo debe incluir @ y un dominio válido.';
+    if (field === 'phoneNumber' && control.errors['pattern']) {
+      return 'El teléfono debe tener entre 7 y 15 números.';
+    }
+    if ((field === 'startTime' || field === 'endTime') && control.errors['pattern']) {
+      return 'La hora debe tener formato HH:mm.';
+    }
+
+    return 'El valor ingresado no es válido.';
   }
 
   private normalizePayload(): LocationRequest {

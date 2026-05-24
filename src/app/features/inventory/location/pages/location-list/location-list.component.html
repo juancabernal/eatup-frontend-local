@@ -83,8 +83,12 @@
                 </td>
                 <td>
                   <button class="action-btn" (click)="goToEdit(location)">Editar</button>
-                  <button class="action-btn" (click)="toggleStatus(location)">
-                    {{ location.active ? 'Inactivar' : 'Activar' }}
+                  <button
+                    class="action-btn"
+                    [disabled]="isToggling(location.id)"
+                    (click)="toggleStatus(location)"
+                  >
+                    {{ isToggling(location.id) ? 'Procesando...' : (location.active ? 'Inactivar' : 'Activar') }}
                   </button>
                 </td>
               </tr>

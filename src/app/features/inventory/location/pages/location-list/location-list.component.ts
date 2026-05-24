@@ -18,6 +18,7 @@ export class LocationListComponent implements OnInit {
   filtering = signal(false);
   errorMessage = signal('');
   infoMessage = signal('');
+  togglingById = signal<Record<string, boolean>>({});
 
   searchTerm = signal('');
   statusFilter = signal<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
@@ -96,14 +97,20 @@ export class LocationListComponent implements OnInit {
   }
 
   toggleStatus(location: LocationResponse): void {
+    if (this.togglingById()[location.id]) return;
+
     this.infoMessage.set('');
     this.errorMessage.set('');
+    this.markToggling(location.id, true);
+    const nextStatus = !location.active;
+
     this.locationService.updateStatus(location.id, { active: !location.active }).subscribe({
       next: () => {
-        this.infoMessage.set(
-          'Solicitud enviada. La sede se listará cuando el backend procese el registro.',
+        this.locations.update((list) =>
+          list.map((item) => (item.id === location.id ? { ...item, active: nextStatus } : item)),
         );
-        this.loadLocations();
+        this.infoMessage.set(`La sede se ${nextStatus ? 'activó' : 'inactivó'} correctamente.`);
+        this.markToggling(location.id, false);
       },
       error: (error) => {
         this.errorMessage.set(
@@ -112,8 +119,13 @@ export class LocationListComponent implements OnInit {
             `No se pudo ${location.active ? 'inactivar' : 'activar'} la sede.`,
           ),
         );
+        this.markToggling(location.id, false);
       },
     });
+  }
+
+  isToggling(id: string): boolean {
+    return !!this.togglingById()[id];
   }
 
   private triggerFiltering(): void {
@@ -140,5 +152,9 @@ export class LocationListComponent implements OnInit {
     }
 
     return fallback;
+  }
+
+  private markToggling(id: string, value: boolean): void {
+    this.togglingById.update((state) => ({ ...state, [id]: value }));
   }
 }
