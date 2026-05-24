@@ -13,11 +13,11 @@
   </div>
   <div class="stat-card stat-card--active">
     <span class="stat-label">Activos</span>
-    <span class="stat-value">{{ totalActive }}</span>
+    <span class="stat-value">{{ totalActive() }}</span>
   </div>
   <div class="stat-card stat-card--inactive">
     <span class="stat-label">Inactivos</span>
-    <span class="stat-value">{{ totalInactive }}</span>
+    <span class="stat-value">{{ totalInactive() }}</span>
   </div>
 </div>
 
@@ -37,7 +37,7 @@
 </div>
 
 <span class="result-count">
-  {{ (discounts() | discountFilter:search():categoryMap()).length }} resultado(s)
+  {{ filteredDiscounts().length }} resultado(s)
 </span>
 
 @if (loading()) {
@@ -66,7 +66,7 @@
       </tr>
     </thead>
       <tbody>
-        @for (discount of paginatedDiscounts; track discount.id) {
+        @for (discount of paginatedDiscounts(); track discount.id) {
           <tr>
             <td>{{ discount.description }}</td>
             <td>{{ categoryName(discount.categoryId) }}</td>
@@ -108,8 +108,8 @@
 
     <div class="pagination">
       <button (click)="goToPage(currentPage() - 1)" [disabled]="currentPage() === 1">← Anterior</button>
-      <span>Página {{ currentPage() }} de {{ totalPages || 1 }}</span>
-      <button (click)="goToPage(currentPage() + 1)" [disabled]="currentPage() === totalPages || totalPages === 0">Siguiente →</button>
+      <span>Página {{ currentPage() }} de {{ totalPages() || 1 }}</span>
+      <button (click)="goToPage(currentPage() + 1)" [disabled]="currentPage() === totalPages() || totalPages() === 0">Siguiente →</button>
     </div>
   </div>
 }

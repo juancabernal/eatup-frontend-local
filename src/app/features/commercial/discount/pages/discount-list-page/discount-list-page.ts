@@ -1,12 +1,12 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { filter, retry } from 'rxjs/operators';
+import { Subject } from 'rxjs';
+import { filter, retry, finalize, takeUntil } from 'rxjs/operators';
 import { RouterLink, Router, NavigationEnd } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CategoryService } from '@commercial/discount/services/category';
 import { DiscountService } from '@commercial/discount/services/discount';
 import { Discount } from '@commercial/discount/models/discount.model';
-import { ENV } from '@config/env.config';
 import { DiscountFilterPipe } from '@commercial/discount/pipes/discount-filter.pipe';
 import { DiscountStatusBadgeComponent } from '@commercial/discount/components/discount-status-badge/discount-status-badge';
 
@@ -14,26 +14,28 @@ import { DiscountStatusBadgeComponent } from '@commercial/discount/components/di
 @Component({
   selector: 'app-discount-list-page',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule, DiscountFilterPipe, DiscountStatusBadgeComponent],
+  imports: [CommonModule, RouterLink, FormsModule, DiscountStatusBadgeComponent],
   templateUrl: './discount-list-page.html',
-  styleUrl: './discount-list-page.css'
+  styleUrl: './discount-list-page.css',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class DiscountListPage implements OnInit {
+export class DiscountListPage implements OnInit, OnDestroy {
   private readonly discountService = inject(DiscountService);
   private readonly router = inject(Router);
   private readonly categoryService = inject(CategoryService);
   private excludeId = '';
 
-  discounts   = signal<Discount[]>([]);
-  categoryMap = signal<Map<string, string>>(new Map());
-  loading     = signal(false);
-  error       = signal('');
-  currentPage = signal(1);
-  search      = signal('');
-  sortBy      = signal<'createdAt' | 'modifiedAt' | 'inactive' | ''>('');
-  readonly pageSize = 5;
+  protected readonly discounts   = signal<Discount[]>([]);
+  protected readonly categoryMap = signal<Map<string, string>>(new Map());
+  protected readonly loading     = signal(false);
+  protected readonly error       = signal('');
+  protected readonly currentPage = signal(1);
+  protected readonly search      = signal('');
+  protected readonly sortBy      = signal<'createdAt' | 'modifiedAt' | 'inactive' | ''>('');
+  protected readonly pageSize    = 5;
 
   private readonly filterPipe = new DiscountFilterPipe();
+  private readonly destroy$ = new Subject<void>();
 
   ngOnInit(): void {
     this.categoryService.getAll().subscribe({
@@ -45,7 +47,8 @@ export class DiscountListPage implements OnInit {
 
     this.router.events.pipe(
       filter(e => e instanceof NavigationEnd),
-      filter((e: any) => e.urlAfterRedirects === '/commercial/discount')
+      filter((e: any) => e.urlAfterRedirects === '/commercial/discount'),
+      takeUntil(this.destroy$)
     ).subscribe(() => setTimeout(() => this.loadDiscounts(), 800));
   }
 
@@ -57,14 +60,14 @@ export class DiscountListPage implements OnInit {
     this.loading.set(true);
     this.error.set('');
     this.discountService.getAll().pipe(
-      retry({ count: 2, delay: 800 })
+      retry({ count: 2, delay: 800 }),
+      finalize(() => this.loading.set(false))
     ).subscribe({
       next: (data) => {
         const list = this.excludeId ? data.filter(d => d.id !== this.excludeId) : data;
         this.discounts.set(list);
-        this.loading.set(false);
       },
-      error: (err) => { this.error.set(err.error?.message ?? 'Error al cargar.'); this.loading.set(false); }
+      error: (err) => this.error.set(err.error?.message ?? 'Error al cargar.')
     });
   }
 
@@ -83,23 +86,34 @@ export class DiscountListPage implements OnInit {
     });
   }
 
-  get filteredDiscounts(): Discount[] {
-    let list = this.filterPipe.transform(this.discounts(), this.search(), this.categoryMap());
-
-    switch (this.sortBy()) {
-      case 'createdAt':  list = [...list].sort((a, b) => new Date(b.createdAt).getTime()  - new Date(a.createdAt).getTime()); break;
-      case 'modifiedAt': list = [...list].sort((a, b) => new Date(b.modifiedAt).getTime() - new Date(a.modifiedAt).getTime()); break;
-      case 'inactive':   list = [...list].sort((a, b) => Number(a.status) - Number(b.status)); break;
-    }
-    return list;
+protected readonly filteredDiscounts = computed(() => {
+  let list = this.filterPipe.transform(this.discounts(), this.search(), this.categoryMap());
+  switch (this.sortBy()) {
+    case 'createdAt':  list = [...list].sort((a, b) => new Date(b.createdAt).getTime()  - new Date(a.createdAt).getTime()); break;
+    case 'modifiedAt': list = [...list].sort((a, b) => new Date(b.modifiedAt).getTime() - new Date(a.modifiedAt).getTime()); break;
+    case 'inactive':   list = [...list].sort((a, b) => Number(a.status) - Number(b.status)); break;
   }
+  return list;
+});
 
-  get paginatedDiscounts(): Discount[]  { const s = (this.currentPage() - 1) * this.pageSize; return this.filteredDiscounts.slice(s, s + this.pageSize); }
-  get totalPages(): number               { return Math.ceil(this.filteredDiscounts.length / this.pageSize); }
-  get totalActive(): number              { return this.discounts().filter(d => d.status).length; }
-  get totalInactive(): number            { return this.discounts().filter(d => !d.status).length; }
+protected readonly totalPages = computed(() =>
+  Math.ceil(this.filteredDiscounts().length / this.pageSize)
+);
 
-  goToPage(page: number): void  { if (page >= 1 && page <= this.totalPages) this.currentPage.set(page); }
-  onSearch(value: string): void { this.search.set(value); this.currentPage.set(1); }
-  onSort(value: string): void   { this.sortBy.set(value as any); this.currentPage.set(1); }
+protected readonly paginatedDiscounts = computed(() => {
+  const s = (this.currentPage() - 1) * this.pageSize;
+  return this.filteredDiscounts().slice(s, s + this.pageSize);
+});
+
+protected readonly totalActive   = computed(() => this.discounts().filter(d => d.status).length);
+protected readonly totalInactive = computed(() => this.discounts().filter(d => !d.status).length);
+
+goToPage(page: number): void  { if (page >= 1 && page <= this.totalPages()) this.currentPage.set(page); }
+onSearch(value: string): void { this.search.set(value); this.currentPage.set(1); }
+onSort(value: string): void   { this.sortBy.set(value as any); this.currentPage.set(1); }
+
+ngOnDestroy(): void {
+  this.destroy$.next();
+  this.destroy$.complete();
+}
 }
