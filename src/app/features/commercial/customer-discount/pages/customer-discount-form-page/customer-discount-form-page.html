@@ -16,10 +16,10 @@
       <select id="discountId" class="input" formControlName="discountId">
         <option value="">-- Selecciona --</option>
         @for (d of discounts(); track d.id) {
-          <option [value]="d.id">{{ d.description }} ({{ d.percentage }}%)</option>
+                    <option [value]="d.id" [title]="d.description + ' (' + d.percentage + '%)'">{{ truncate(d.description + ' (' + d.percentage + '%)') }}</option>
         }
       </select>
-      @if (discountIdCtrl.invalid && discountIdCtrl.touched) {
+      @if (showFieldError('discountId')) {
         <span class="field-error">Selecciona un descuento.</span>
       } @else {
         <span class="field-hint">Solo se muestran descuentos activos.</span>
@@ -37,10 +37,10 @@
       <select id="customerId" class="input" formControlName="customerId">
         <option value="">-- Selecciona un cliente --</option>
         @for (c of clients(); track c.id) {
-          <option [value]="c.id">{{ clientLabel(c) }}</option>
+          <option [value]="c.id" [title]="clientLabel(c)">{{ truncate(clientLabel(c)) }}</option>
         }
       </select>
-      @if (customerIdCtrl.invalid && customerIdCtrl.touched) {
+      @if (showFieldError('customerId')) {
         <span class="field-error">Selecciona un cliente.</span>
       } @else {
         <span class="field-hint">Solo se muestran clientes activos con descuentos habilitados.</span>
@@ -84,10 +84,10 @@
       <input id="endDate" type="date" class="input input-short"
              formControlName="endDate" [min]="today" />
       <span class="field-hint">Déjalo vacío si no tiene vencimiento.</span>
-      @if (form.errors?.['endDatePast'] && endDateCtrl.touched) {
+      @if (form.errors?.['endDatePast'] && (endDateCtrl.touched || formSubmitted())) {
         <span class="field-error">La fecha de vencimiento no puede ser en el pasado.</span>
       }
-      @if (form.errors?.['endBeforeStart'] && endDateCtrl.touched) {
+      @if (form.errors?.['endBeforeStart'] && (endDateCtrl.touched || formSubmitted())) {
         <span class="field-error">La fecha de vencimiento debe ser posterior a la fecha de inicio.</span>
       }
     </div>

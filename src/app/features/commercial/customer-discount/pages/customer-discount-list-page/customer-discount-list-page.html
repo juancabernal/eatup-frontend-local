@@ -1,6 +1,6 @@
 <div class="page-header">
   <div>
-    <h1>Clientes por Descuento</h1>
+    <h1>Descuentos por Cliente</h1>
     <p>Gestión de descuentos asignados a clientes.</p>
   </div>
   <a routerLink="new" class="btn-primary">+ Nueva Asignación</a>
@@ -13,23 +13,67 @@
   </div>
 </div>
 
-<div class="toolbar">
-  <input class="search-input"
-         type="text"
-         placeholder="Buscar por descuento o cliente..."
-         [ngModel]="search()"
-         (ngModelChange)="onSearch($event)" />
-</div>
-<span class="result-count">
-  {{ (items() | customerDiscountFilter:search():discountMap():clientMap()).length }} resultado(s)
-</span>
+<section class="filters-card">
+  <div class="filter-field filter-field--grow">
+    <label class="filter-label">Buscar</label>
+    <input class="search-input"
+           type="text"
+           placeholder="Descuento o cliente..."
+           [ngModel]="search()"
+           (ngModelChange)="onSearch($event)" />
+  </div>
+  <div class="filter-field">
+    <label class="filter-label">Ordenar por</label>
+    <select class="sort-select" [ngModel]="sortBy()" (ngModelChange)="onSort($event)">
+      <option value="">Sin orden</option>
+      <option value="assignedAt">Más reciente (asignación)</option>
+      <option value="startDate">Fecha de inicio</option>
+      <option value="endDate">Vencimiento próximo</option>
+    </select>
+  </div>
+  <div class="filter-field">
+    <label class="filter-label">Vencimiento</label>
+    <select class="sort-select" [ngModel]="expiryFilter()" (ngModelChange)="onExpiryFilter($event)">
+      <option value="all">Todos</option>
+      <option value="vigente">Vigentes</option>
+      <option value="por_vencer">Por vencer (30 días)</option>
+      <option value="vencido">Vencidos</option>
+    </select>
+  </div>
+  <div class="filter-actions">
+    <button class="btn-action" (click)="clearFilters()">✕ Limpiar</button>
+  </div>
+</section>
 
-@if (loading()) { <p class="loading">Cargando...</p> }
-@if (error()) { <div class="error-box"><strong>Error:</strong> {{ error() }}</div> }
+<div class="result-row">
+  <span class="result-count">
+  @if (!loading()) { {{ filteredItems().length }} resultado(s) }
+  @else { — }
+</span>
+  <button class="btn-reload-primary" (click)="load()" [disabled]="loading()" title="Recargar lista">↺</button>
+</div>
+
+@if (loading()) { <p class="loading">Cargando asignaciones</p> }
+@if (error()) {
+  <div class="error-box">
+    <strong>Error:</strong> {{ error() }}
+    <button class="btn-retry" (click)="load()">Reintentar</button>
+  </div>
+}
 
 @if (!loading() && !error()) {
-  <div class="table-container">
+    <div class="table-container">
+    <div class="table-scroll">
     <table>
+      <colgroup>
+        <col style="width:185px">
+        <col style="width:155px">
+        <col style="width:115px">
+        <col style="width:95px">
+        <col style="width:90px">
+        <col style="width:130px">
+        <col style="width:180px">
+      </colgroup>
       <thead>
         <tr>
           <th>Descuento</th>
@@ -42,10 +86,17 @@
         </tr>
       </thead>
       <tbody>
-        @for (item of paginated; track item.id) {
+        @for (item of paginated(); track item.id) {
           <tr>
-            <td>{{ discountName(item.discountId) }}</td>
-            <td>{{ clientName(item.customerId) }}</td>
+             <td>
+              <div class="discount-cell">
+                <span [title]="discountName(item.discountId)">{{ truncate(discountName(item.discountId), 40) }}</span>
+                @if (!discountActive(item.discountId)) {
+                  <app-discount-status-badge [active]="false" />
+                }
+              </div>
+            </td>
+            <td [title]="clientName(item.customerId)">{{ truncate(clientName(item.customerId), 35) }}</td>
             <td>{{ locationName() }}</td>
             <td>{{ item.assignedAt ? (item.assignedAt | date:'dd/MM/yyyy') : '—' }}</td>
             <td>{{ item.startDate ? (item.startDate | date:'dd/MM/yyyy') : 'Sin inicio' }}</td>
@@ -76,12 +127,53 @@
           <tr><td colspan="7" class="empty">No hay asignaciones registradas.</td></tr>
         }
       </tbody>
-    </table>
+        </table>
+    </div>
 
     <div class="pagination">
       <button (click)="goToPage(currentPage() - 1)" [disabled]="currentPage() === 1">← Anterior</button>
-      <span>Página {{ currentPage() }} de {{ totalPages || 1 }}</span>
-      <button (click)="goToPage(currentPage() + 1)" [disabled]="currentPage() === totalPages || totalPages === 0">Siguiente →</button>
+      <span>
+        @if (filteredItems().length > 0) {
+          Mostrando {{ rangeStart() }}–{{ rangeEnd() }} de {{ filteredItems().length }}
+        } @else {
+          Sin resultados
+        }
+      </span>
+      <button (click)="goToPage(currentPage() + 1)" [disabled]="currentPage() === totalPages() || totalPages() === 0">Siguiente →</button>
+      <select class="page-size-select" [ngModel]="pageSize()" (ngModelChange)="onPageSize($event)">
+        @for (opt of pageSizeOptions; track opt) {
+          <option [value]="opt">{{ opt }} por página</option>
+        }
+      </select>
     </div>
   </div>
 }
+@if (confirmDeleteId()) {
+  <div class="modal-overlay" (click)="cancelDelete()">
+    <div class="modal-box" (click)="$event.stopPropagation()">
+      <h3 class="modal-title">¿Eliminar asignación?</h3>
+      <p class="modal-desc">Esta acción no se puede deshacer.</p>
+      <div class="modal-actions">
+        <button class="btn-ghost" (click)="cancelDelete()">Cancelar</button>
+        <button class="btn-danger-modal" (click)="confirmDelete()">Eliminar</button>
+      </div>
+    </div>
+  </div>
+}
+<div class="toast-container">
+  @for (toast of toasts(); track toast.id) {
+    <div class="toast" [class.toast--success]="toast.type === 'success'" [class.toast--error]="toast.type === 'error'">
+      @if (toast.type === 'success') {
+        <svg class="toast-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>
+        </svg>
+      } @else {
+        <svg class="toast-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+        </svg>
+      }
+      <span class="toast-msg">{{ toast.message }}</span>
+      <button class="toast-close" (click)="removeToast(toast.id)">×</button>
+    </div>
+  }
+</div>

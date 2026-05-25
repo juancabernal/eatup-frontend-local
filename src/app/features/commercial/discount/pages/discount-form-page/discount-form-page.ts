@@ -1,11 +1,12 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormGroup, FormControl, Validators } from '@angular/forms';
 import { CategoryService, DiscountCategory } from '@commercial/discount/services/category';
 import { Router, ActivatedRoute, RouterLink } from '@angular/router';
 import { DiscountService } from '@commercial/discount/services/discount';
+import { DiscountRefreshService } from '@commercial/discount/services/discount-refresh.service';
 import { Discount } from '@commercial/discount/models/discount.model';
-import { ENV } from '@config/env.config';
+
 
 
 @Component({
@@ -13,21 +14,25 @@ import { ENV } from '@config/env.config';
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterLink],
   templateUrl: './discount-form-page.html',
-  styleUrl: './discount-form-page.css'
+  styleUrl: './discount-form-page.css',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class DiscountFormPage implements OnInit {
   private readonly discountService = inject(DiscountService);
   private readonly router          = inject(Router);
   private readonly route           = inject(ActivatedRoute);
   private readonly categoryService = inject(CategoryService);
+  private readonly refreshService = inject(DiscountRefreshService);
 
 
-  isEditing    = signal(false);
-  submitting   = signal(false);
-  categories = signal<DiscountCategory[]>([]);
-  generalError = signal('');
+  protected readonly isEditing    = signal(false);
+  protected readonly submitting   = signal(false);
+  protected readonly categories   = signal<DiscountCategory[]>([]);
+  protected readonly generalError = signal('');
+  protected readonly formSubmitted = signal(false);
 
   private discountId = '';
+  private currentStatus = true;
 
   form = new FormGroup({
     categoryId:  new FormControl('', [Validators.required]),
@@ -52,11 +57,14 @@ export class DiscountFormPage implements OnInit {
     if (this.discountId) {
       this.isEditing.set(true);
       this.discountService.getById(this.discountId).subscribe({
-        next: (data: Discount) => this.form.patchValue({
-          categoryId:  data.categoryId,
-          percentage:  data.percentage,
-          description: data.description
-        }),
+        next: (data: Discount) => {
+          this.currentStatus = !!data.status;
+          this.form.patchValue({
+            categoryId:  data.categoryId,
+            percentage:  data.percentage,
+            description: data.description
+          })
+        },
         error: () => this.generalError.set('Error al cargar el descuento.')
       });
     }
@@ -75,7 +83,7 @@ export class DiscountFormPage implements OnInit {
   save(): void {
     if (this.submitting()) return;
     this.generalError.set('');
-    this.form.markAllAsTouched();
+    this.formSubmitted.set(true);
     if (this.form.invalid) return;
 
     this.submitting.set(true);
@@ -85,8 +93,27 @@ export class DiscountFormPage implements OnInit {
       ? this.discountService.update(this.discountId, { categoryId: categoryId!, percentage: percentage!, description: description!.trim() })
       : this.discountService.create({ categoryId: categoryId!, percentage: percentage!, description: description!.trim() });
 
+      
     request$.subscribe({
-      next: () => { this.submitting.set(false); setTimeout(() => this.router.navigate(['/commercial/discount']), 500); },
+        next: () => {
+          if (this.isEditing()) {
+              this.discountService.updateStatus(this.discountId, { status: this.currentStatus }).subscribe({
+              complete: () => {
+                this.submitting.set(false);
+                this.router.navigate(['/commercial/discount']).then(() => this.refreshService.refresh());
+              },
+              error: () => {
+                this.submitting.set(false);
+                this.router.navigate(['/commercial/discount']).then(() => this.refreshService.refresh());
+              }
+            });
+          } else {
+            this.submitting.set(false);
+            this.router.navigate(['/commercial/discount']).then(() => {
+              setTimeout(() => this.refreshService.refresh(), 800);
+            });
+          }
+        },
       error: (err) => {
         this.submitting.set(false);
         const b = err.error;
@@ -102,5 +129,30 @@ export class DiscountFormPage implements OnInit {
         }
       }
     });
+  }
+
+  protected showFieldError(controlName: string): boolean {
+    const ctrl = this.form.get(controlName);
+    return !!ctrl && ctrl.invalid && (ctrl.touched || this.formSubmitted());
+  }
+
+  protected fieldError(controlName: string): string {
+    const ctrl = this.form.get(controlName);
+    if (!ctrl || ctrl.valid) return '';
+    if (ctrl.errors?.['required'])   return 'Este campo es obligatorio.';
+    if (ctrl.errors?.['minlength'])  return `Mínimo ${ctrl.errors['minlength'].requiredLength} caracteres.`;
+    if (ctrl.errors?.['maxlength'])  return `Máximo ${ctrl.errors['maxlength'].requiredLength} caracteres.`;
+    if (ctrl.errors?.['min'])        return `El valor mínimo es ${ctrl.errors['min'].min}.`;
+    if (ctrl.errors?.['max'])        return `El valor máximo es ${ctrl.errors['max'].max}.`;
+    if (ctrl.errors?.['backend'])    return ctrl.errors['backend'];
+    return 'Valor no válido.';
+  }
+  
+    onWheel(event: Event): void {
+    (event.target as HTMLInputElement).blur();
+  }
+
+  protected truncate(text: string, max = 100): string {
+    return text && text.length > max ? text.slice(0, max) + '...' : (text ?? '');
   }
 }
