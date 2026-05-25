@@ -4,6 +4,7 @@ import { ReactiveFormsModule, FormGroup, FormControl, Validators } from '@angula
 import { CategoryService, DiscountCategory } from '@commercial/discount/services/category';
 import { Router, ActivatedRoute, RouterLink } from '@angular/router';
 import { DiscountService } from '@commercial/discount/services/discount';
+import { DiscountRefreshService } from '@commercial/discount/services/discount-refresh.service';
 import { Discount } from '@commercial/discount/models/discount.model';
 
 
@@ -21,6 +22,7 @@ export class DiscountFormPage implements OnInit {
   private readonly router          = inject(Router);
   private readonly route           = inject(ActivatedRoute);
   private readonly categoryService = inject(CategoryService);
+  private readonly refreshService = inject(DiscountRefreshService);
 
 
   protected readonly isEditing    = signal(false);
@@ -30,6 +32,7 @@ export class DiscountFormPage implements OnInit {
   protected readonly formSubmitted = signal(false);
 
   private discountId = '';
+  private currentStatus = true;
 
   form = new FormGroup({
     categoryId:  new FormControl('', [Validators.required]),
@@ -54,11 +57,14 @@ export class DiscountFormPage implements OnInit {
     if (this.discountId) {
       this.isEditing.set(true);
       this.discountService.getById(this.discountId).subscribe({
-        next: (data: Discount) => this.form.patchValue({
-          categoryId:  data.categoryId,
-          percentage:  data.percentage,
-          description: data.description
-        }),
+        next: (data: Discount) => {
+          this.currentStatus = !!data.status;
+          this.form.patchValue({
+            categoryId:  data.categoryId,
+            percentage:  data.percentage,
+            description: data.description
+          })
+        },
         error: () => this.generalError.set('Error al cargar el descuento.')
       });
     }
@@ -87,8 +93,27 @@ export class DiscountFormPage implements OnInit {
       ? this.discountService.update(this.discountId, { categoryId: categoryId!, percentage: percentage!, description: description!.trim() })
       : this.discountService.create({ categoryId: categoryId!, percentage: percentage!, description: description!.trim() });
 
+      
     request$.subscribe({
-      next: () => { this.submitting.set(false); void this.router.navigate(['/commercial/discount']); },
+        next: () => {
+          if (this.isEditing()) {
+              this.discountService.updateStatus(this.discountId, { status: this.currentStatus }).subscribe({
+              complete: () => {
+                this.submitting.set(false);
+                this.router.navigate(['/commercial/discount']).then(() => this.refreshService.refresh());
+              },
+              error: () => {
+                this.submitting.set(false);
+                this.router.navigate(['/commercial/discount']).then(() => this.refreshService.refresh());
+              }
+            });
+          } else {
+            this.submitting.set(false);
+            this.router.navigate(['/commercial/discount']).then(() => {
+              setTimeout(() => this.refreshService.refresh(), 800);
+            });
+          }
+        },
       error: (err) => {
         this.submitting.set(false);
         const b = err.error;
@@ -121,5 +146,13 @@ export class DiscountFormPage implements OnInit {
     if (ctrl.errors?.['max'])        return `El valor máximo es ${ctrl.errors['max'].max}.`;
     if (ctrl.errors?.['backend'])    return ctrl.errors['backend'];
     return 'Valor no válido.';
+  }
+  
+    onWheel(event: Event): void {
+    (event.target as HTMLInputElement).blur();
+  }
+
+  protected truncate(text: string, max = 100): string {
+    return text && text.length > max ? text.slice(0, max) + '...' : (text ?? '');
   }
 }

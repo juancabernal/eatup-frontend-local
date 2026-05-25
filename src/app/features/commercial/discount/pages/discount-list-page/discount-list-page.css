@@ -82,10 +82,9 @@
 }
 
 table {
-  width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
-  min-width: 700px;
+  min-width: 950px;
 }
 
 .table-scroll {
@@ -94,9 +93,9 @@ table {
 
 .cell-truncate {
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 thead {

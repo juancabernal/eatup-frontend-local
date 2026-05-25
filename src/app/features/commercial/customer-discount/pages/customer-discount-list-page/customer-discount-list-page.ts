@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
-import { RouterLink, Router, NavigationEnd } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { Subject } from 'rxjs';
-import { filter, finalize, takeUntil } from 'rxjs/operators';
+import { finalize, takeUntil } from 'rxjs/operators';
 import { CustomerDiscountService } from '@commercial/customer-discount/services/customer-discount';
 import { CustomerDiscount } from '@commercial/customer-discount/models/customer-discount.model';
 import { DiscountService } from '@commercial/discount/services/discount';
@@ -13,6 +13,7 @@ import { FormsModule } from '@angular/forms';
 import { CustomerDiscountFilterPipe } from '@commercial/customer-discount/pipes/customer-discount-filter.pipe';
 import { CustomerDiscountExpiryBadgeComponent } from '@commercial/customer-discount/components/customer-discount-expiry-badge/customer-discount-expiry-badge';
 import { DiscountStatusBadgeComponent } from '@commercial/discount/components/discount-status-badge/discount-status-badge';
+import { CustomerDiscountRefreshService } from '@commercial/customer-discount/services/customer-discount-refresh.service';
 
 @Component({
   selector: 'app-customer-discount-list-page',
@@ -28,7 +29,7 @@ export class CustomerDiscountListPage implements OnInit, OnDestroy {
   private readonly discountService = inject(DiscountService);
   private readonly clientService   = inject(ClientService);
   private readonly locationService = inject(LocationService);
-  private readonly router          = inject(Router);
+  private readonly refreshService = inject(CustomerDiscountRefreshService);
   private excludeId = '';
 
 
@@ -42,6 +43,7 @@ export class CustomerDiscountListPage implements OnInit, OnDestroy {
   protected readonly currentPage  = signal(1);
   protected readonly pageSize     = 5;
   protected readonly search       = signal('');
+  protected readonly sortBy       = signal<'assignedAt' | 'startDate' | 'endDate' | ''>('');
 
   private readonly filterPipe = new CustomerDiscountFilterPipe();
   private readonly destroy$ = new Subject<void>();
@@ -74,9 +76,7 @@ export class CustomerDiscountListPage implements OnInit, OnDestroy {
 
     this.load();
 
-    this.router.events.pipe(
-      filter(e => e instanceof NavigationEnd),
-      filter((e: any) => e.urlAfterRedirects === '/commercial/customer-discount'),
+    this.refreshService.onRefresh$.pipe(
       takeUntil(this.destroy$)
     ).subscribe(() => this.load());
   }
@@ -107,9 +107,21 @@ export class CustomerDiscountListPage implements OnInit, OnDestroy {
     });
   }
 
-  protected readonly filteredItems = computed(() =>
-    this.filterPipe.transform(this.items(), this.search(), this.discountMap(), this.clientMap())
-  );
+  protected readonly filteredItems = computed(() => {
+    let list = this.filterPipe.transform(this.items(), this.search(), this.discountMap(), this.clientMap());
+    switch (this.sortBy()) {
+      case 'assignedAt':
+        list = [...list].sort((a, b) => new Date(b.assignedAt ?? 0).getTime() - new Date(a.assignedAt ?? 0).getTime());
+        break;
+      case 'startDate':
+        list = [...list].sort((a, b) => new Date(a.startDate ?? '9999').getTime() - new Date(b.startDate ?? '9999').getTime());
+        break;
+      case 'endDate':
+        list = [...list].sort((a, b) => new Date(a.endDate ?? '9999').getTime() - new Date(b.endDate ?? '9999').getTime());
+        break;
+    }
+    return list;
+  });
 
   protected readonly totalPages = computed(() =>
     Math.ceil(this.filteredItems().length / this.pageSize)
@@ -122,8 +134,15 @@ export class CustomerDiscountListPage implements OnInit, OnDestroy {
   
   goToPage(page: number): void {
   if (page >= 1 && page <= this.totalPages()) this.currentPage.set(page);
-}
+  }
+  
   onSearch(value: string): void { this.search.set(value); this.currentPage.set(1); }
+
+  onSort(value: string): void  { this.sortBy.set(value as any); this.currentPage.set(1); }
+
+  protected truncate(text: string, max = 50): string {
+    return text && text.length > max ? text.slice(0, max) + '...' : (text ?? '');
+  }
 
   ngOnDestroy(): void {
     this.destroy$.next();

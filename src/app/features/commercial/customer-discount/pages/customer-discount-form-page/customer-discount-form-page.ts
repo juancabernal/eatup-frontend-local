@@ -9,7 +9,7 @@ import { CustomerDiscount } from '@commercial/customer-discount/models/customer-
 import { DiscountService } from '@commercial/discount/services/discount';
 import { Discount } from '@commercial/discount/models/discount.model';
 import { ENV } from '@config/env.config';
-
+import { CustomerDiscountRefreshService } from '@commercial/customer-discount/services/customer-discount-refresh.service';
 
 function dateRangeValidator(group: AbstractControl): ValidationErrors | null {
   const start = group.get('startDate')?.value as string;
@@ -36,6 +36,7 @@ export class CustomerDiscountFormPage implements OnInit {
   private readonly route           = inject(ActivatedRoute);
   private readonly clientService   = inject(ClientService);
   private readonly locationService = inject(LocationService);
+  private readonly refreshService = inject(CustomerDiscountRefreshService);
 
   protected readonly isEditing    = signal(false);
   protected readonly submitting   = signal(false);
@@ -125,7 +126,13 @@ export class CustomerDiscountFormPage implements OnInit {
     req$.subscribe({
       next: () => {
         this.submitting.set(false);
-        void this.router.navigate(['/commercial/customer-discount']);
+        if (this.isEditing()) {
+          void this.router.navigate(['/commercial/customer-discount']).then(() => this.refreshService.refresh());
+        } else {
+          void this.router.navigate(['/commercial/customer-discount']).then(() => {
+            setTimeout(() => this.refreshService.refresh(), 800);
+          });
+        }
       },
       error: (err) => {
         this.submitting.set(false);
@@ -147,5 +154,9 @@ export class CustomerDiscountFormPage implements OnInit {
     if (this.form.errors?.['endDatePast'])     return 'La fecha de fin no puede ser anterior a hoy.';
     if (this.form.errors?.['endBeforeStart']) return 'La fecha de fin no puede ser anterior a la de inicio.';
     return 'Valor no válido.';
+  }
+
+  protected truncate(text: string, max = 100): string {
+    return text && text.length > max ? text.slice(0, max) + '...' : (text ?? '');
   }
 }

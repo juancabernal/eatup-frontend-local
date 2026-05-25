@@ -18,7 +18,7 @@
       <select id="categoryId" class="input" formControlName="categoryId">
         <option value="">-- Selecciona una categoría --</option>
         @for (c of categories(); track c.id) {
-          <option [value]="c.id">{{ c.name }}</option>
+          <option [value]="c.id" [title]="c.name">{{ truncate(c.name) }}</option>
         }
       </select>
       @if (showFieldError('categoryId')) {
@@ -40,7 +40,8 @@
              placeholder="Ej: 10" min="1" max="100"
              formControlName="percentage"
              (keydown)="$event.key==='-'||$event.key==='+'||$event.key==='e'||$event.key==='E'||$event.key==='.'?$event.preventDefault():null"
-             (input)="onPercentageInput($event)" />
+            (input)="onPercentageInput($event)"
+             (wheel)="onWheel($event)" />
       @if (showFieldError('percentage')) {
         <span class="field-error">{{ fieldError('percentage') }}</span>
       } @else {

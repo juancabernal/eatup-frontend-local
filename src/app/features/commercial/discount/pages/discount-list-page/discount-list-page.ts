@@ -1,15 +1,15 @@
 import { ChangeDetectionStrategy, Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Subject } from 'rxjs';
-import { filter, retry, finalize, takeUntil } from 'rxjs/operators';
-import { RouterLink, Router, NavigationEnd } from '@angular/router';
+import { Subject, EMPTY } from 'rxjs';
+import { retry, finalize, takeUntil, switchMap, catchError } from 'rxjs/operators';
+import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CategoryService } from '@commercial/discount/services/category';
 import { DiscountService } from '@commercial/discount/services/discount';
 import { Discount } from '@commercial/discount/models/discount.model';
 import { DiscountFilterPipe } from '@commercial/discount/pipes/discount-filter.pipe';
 import { DiscountStatusBadgeComponent } from '@commercial/discount/components/discount-status-badge/discount-status-badge';
-
+import { DiscountRefreshService } from '@commercial/discount/services/discount-refresh.service';
 
 @Component({
   selector: 'app-discount-list-page',
@@ -21,8 +21,8 @@ import { DiscountStatusBadgeComponent } from '@commercial/discount/components/di
 })
 export class DiscountListPage implements OnInit, OnDestroy {
   private readonly discountService = inject(DiscountService);
-  private readonly router = inject(Router);
   private readonly categoryService = inject(CategoryService);
+  private readonly refreshService = inject(DiscountRefreshService);
 
   protected readonly discounts   = signal<Discount[]>([]);
   protected readonly categoryMap = signal<Map<string, string>>(new Map());
@@ -35,35 +35,42 @@ export class DiscountListPage implements OnInit, OnDestroy {
 
   private readonly filterPipe = new DiscountFilterPipe();
   private readonly destroy$ = new Subject<void>();
+  private readonly loadTrigger$ = new Subject<void>();
 
-  ngOnInit(): void {
-    this.categoryService.getAll().subscribe({
-      next: (data) => this.categoryMap.set(new Map(data.map(c => [c.id, c.name])))
-    });
+   ngOnInit(): void {
+      this.categoryService.getAll().subscribe({
+        next: (data) => this.categoryMap.set(new Map(data.map(c => [c.id, c.name])))
+      });
 
-        this.loadDiscounts();
+      this.loadTrigger$.pipe(
+        switchMap(() => {
+          this.loading.set(true);
+          this.error.set('');
+          return this.discountService.getAll().pipe(
+            retry({ count: 2, delay: 800 }),
+            finalize(() => this.loading.set(false)),
+            catchError(err => {
+              this.error.set(err.error?.message ?? 'Error al cargar.');
+              return EMPTY;
+            })
+          );
+        }),
+        takeUntil(this.destroy$)
+      ).subscribe(data => this.discounts.set(data));
 
-    this.router.events.pipe(
-      filter(e => e instanceof NavigationEnd),
-      filter((e: any) => e.urlAfterRedirects === '/commercial/discount'),
-      takeUntil(this.destroy$)
-    ).subscribe(() => this.loadDiscounts());
-  }
+      this.loadDiscounts();
+
+      this.refreshService.onRefresh$.pipe(
+        takeUntil(this.destroy$)
+      ).subscribe(() => this.loadDiscounts());
+    }
 
   categoryName(id: string): string {
     return this.categoryMap().get(id) ?? 'Sin categoría';
   }
 
   loadDiscounts(): void {
-    this.loading.set(true);
-    this.error.set('');
-    this.discountService.getAll().pipe(
-      retry({ count: 2, delay: 800 }),
-      finalize(() => this.loading.set(false))
-    ).subscribe({
-            next: (data) => this.discounts.set(data),
-      error: (err) => this.error.set(err.error?.message ?? 'Error al cargar.')
-    });
+    this.loadTrigger$.next();
   }
 
   toggleStatus(id: string, current: boolean): void {
@@ -98,6 +105,10 @@ protected readonly totalInactive = computed(() => this.discounts().filter(d => !
 goToPage(page: number): void  { if (page >= 1 && page <= this.totalPages()) this.currentPage.set(page); }
 onSearch(value: string): void { this.search.set(value); this.currentPage.set(1); }
 onSort(value: string): void   { this.sortBy.set(value as any); this.currentPage.set(1); }
+
+protected truncate(text: string, max = 50): string {
+  return text && text.length > max ? text.slice(0, max) + '...' : (text ?? '');
+}
 
 ngOnDestroy(): void {
   this.destroy$.next();
