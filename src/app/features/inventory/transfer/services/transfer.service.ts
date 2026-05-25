@@ -30,6 +30,10 @@ export class TransferService {
     return this.http.get<TransferResponse[]>(`${this.baseUrl}/cancelled`);
   }
 
+  getClaimed(): Observable<TransferResponse[]> {
+    return this.http.get<TransferResponse[]>(`${this.baseUrl}/claimed`);
+  }
+
   getIncoming(sedeDestino: string): Observable<TransferResponse[]> {
     const params = new HttpParams().set('sedeDestino', sedeDestino);
     return this.http.get<TransferResponse[]>(`${this.baseUrl}/incoming`, { params });

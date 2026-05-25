@@ -287,7 +287,8 @@ export class TransferListPageComponent implements OnInit {
     { label: 'Entrantes', value: 'ENTRANTES' },
     { label: 'En transito', value: 'EN_TRANSITO' },
     { label: 'Completados', value: 'COMPLETADOS' },
-    { label: 'Cancelados', value: 'CANCELADOS' }
+    { label: 'Cancelados', value: 'CANCELADOS' },
+    { label: 'Reclamados', value: 'RECLAMADOS' }
   ];
 
   protected readonly transfers = signal<TransferResponse[]>([]);
@@ -325,6 +326,9 @@ export class TransferListPageComponent implements OnInit {
         break;
       case 'CANCELADOS':
         request$ = this.transferService.getCancelled();
+        break;
+      case 'RECLAMADOS':
+        request$ = this.transferService.getClaimed();
         break;
       default:
         request$ = this.transferService.getAll();

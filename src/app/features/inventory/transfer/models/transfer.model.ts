@@ -45,4 +45,5 @@ export type TransferListFilter =
   | 'ENTRANTES'
   | 'EN_TRANSITO'
   | 'COMPLETADOS'
-  | 'CANCELADOS';
+  | 'CANCELADOS'
+  | 'RECLAMADOS';
