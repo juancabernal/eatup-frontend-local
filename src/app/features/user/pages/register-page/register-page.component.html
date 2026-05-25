@@ -86,7 +86,7 @@
             [(ngModel)]="model.phone"
             required
             maxlength="10"
-            pattern="^\\d{10}$"
+            pattern="^[0-9]{10}$"
             #phone="ngModel"
           />
           @if (phone.invalid && (phone.dirty || phone.touched)) {

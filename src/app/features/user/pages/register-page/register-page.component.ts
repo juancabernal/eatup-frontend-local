@@ -15,6 +15,7 @@ import {
   RegisterUserPayload
 } from '@features/user/models/user-profile.model';
 import { UserRegisterService } from '@features/user/services/user-register.service';
+import { ENV } from '@config/env.config';
 
 @Component({
   selector: 'app-register-page',
@@ -27,6 +28,10 @@ import { UserRegisterService } from '@features/user/services/user-register.servi
 export class RegisterPageComponent implements OnInit {
   private readonly registerService = inject(UserRegisterService);
   private readonly router = inject(Router);
+  private readonly fallbackLocation: LocationOption = {
+    id: ENV.locationId,
+    name: 'Sede por defecto (temporal)'
+  };
 
   protected readonly loading = signal(false);
   protected readonly loadingCatalogs = signal(true);
@@ -115,7 +120,15 @@ export class RegisterPageComponent implements OnInit {
       const catalogs = await this.registerService.loadCatalogs();
       this.documentTypes.set(catalogs.documentTypes);
       this.departments.set(catalogs.departments);
-      this.locations.set(catalogs.locations);
+
+      const locations = catalogs.locations.length > 0
+        ? catalogs.locations
+        : [this.fallbackLocation];
+
+      this.locations.set(locations);
+      if (!this.model.locationId && locations.length === 1) {
+        this.model.locationId = locations[0].id;
+      }
     } catch {
       this.errorMsg.set('No se pudieron cargar los catalogos del formulario.');
     } finally {

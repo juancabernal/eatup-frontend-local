@@ -5,13 +5,34 @@ import { AuthService } from '@features/user/services/auth.service';
 import { catchError, throwError } from 'rxjs';
 
 const LOGIN_ENDPOINT = '/userapi/v1/users/login';
+const REGISTER_USER_ENDPOINT = '/userapi/v1/users';
+
+const PUBLIC_CATALOG_ENDPOINTS = [
+  '/userapi/v1/document-types',
+  '/userapi/v1/departments',
+  '/userapi/v1/cities',
+  '/inventory/api/v1/location/active'
+];
+
+function isPublicRequest(url: string, method: string): boolean {
+  if (url.includes(LOGIN_ENDPOINT)) {
+    return true;
+  }
+
+  // Registration is public only for user creation requests.
+  if (method === 'POST' && url.includes(REGISTER_USER_ENDPOINT)) {
+    return true;
+  }
+
+  return PUBLIC_CATALOG_ENDPOINTS.some(endpoint => url.includes(endpoint));
+}
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const router = inject(Router);
   const authService = inject(AuthService);
-  const isLoginRequest = req.url.includes(LOGIN_ENDPOINT);
+  const publicRequest = isPublicRequest(req.url, req.method);
 
-  if (isLoginRequest) {
+  if (publicRequest) {
     return next(req);
   }
 
