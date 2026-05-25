@@ -30,7 +30,10 @@ export class DiscountListPage implements OnInit, OnDestroy {
   protected readonly error       = signal('');
   protected readonly currentPage = signal(1);
   protected readonly search      = signal('');
-  protected readonly sortBy      = signal<'createdAt' | 'modifiedAt' | 'inactive' | ''>('');
+  protected readonly sortBy = signal<'createdAt' | 'modifiedAt' | ''>('');
+  protected readonly statusFilter = signal<'all' | 'active' | 'inactive'>('all');
+  protected readonly confirmToggleId      = signal<string | null>(null);
+  protected readonly confirmToggleCurrent = signal(false);
   protected readonly pageSize    = 5;
 
   private readonly filterPipe = new DiscountFilterPipe();
@@ -74,18 +77,34 @@ export class DiscountListPage implements OnInit, OnDestroy {
   }
 
   toggleStatus(id: string, current: boolean): void {
+    this.confirmToggleId.set(id);
+    this.confirmToggleCurrent.set(current);
+  }
+
+  protected confirmToggle(): void {
+    const id      = this.confirmToggleId();
+    const current = this.confirmToggleCurrent();
+    if (!id) return;
+    this.confirmToggleId.set(null);
     this.discounts.update(list => list.map(d => d.id === id ? { ...d, status: !current } : d));
     this.discountService.updateStatus(id, { status: !current }).subscribe({
       error: () => this.discounts.update(list => list.map(d => d.id === id ? { ...d, status: current } : d))
     });
   }
 
+  protected cancelToggle(): void {
+    this.confirmToggleId.set(null);
+  }
+
 protected readonly filteredDiscounts = computed(() => {
   let list = this.filterPipe.transform(this.discounts(), this.search(), this.categoryMap());
+  switch (this.statusFilter()) {
+    case 'active':   list = list.filter(d =>  d.status); break;
+    case 'inactive': list = list.filter(d => !d.status); break;
+  }
   switch (this.sortBy()) {
     case 'createdAt':  list = [...list].sort((a, b) => new Date(b.createdAt).getTime()  - new Date(a.createdAt).getTime()); break;
     case 'modifiedAt': list = [...list].sort((a, b) => new Date(b.modifiedAt).getTime() - new Date(a.modifiedAt).getTime()); break;
-    case 'inactive':   list = [...list].sort((a, b) => Number(a.status) - Number(b.status)); break;
   }
   return list;
 });
@@ -105,6 +124,9 @@ protected readonly totalInactive = computed(() => this.discounts().filter(d => !
 goToPage(page: number): void  { if (page >= 1 && page <= this.totalPages()) this.currentPage.set(page); }
 onSearch(value: string): void { this.search.set(value); this.currentPage.set(1); }
 onSort(value: string): void   { this.sortBy.set(value as any); this.currentPage.set(1); }
+
+onStatusFilter(v: string): void { this.statusFilter.set(v as any); this.currentPage.set(1); }
+clearFilters(): void { this.search.set(''); this.sortBy.set(''); this.statusFilter.set('all'); this.currentPage.set(1); }
 
 protected truncate(text: string, max = 50): string {
   return text && text.length > max ? text.slice(0, max) + '...' : (text ?? '');

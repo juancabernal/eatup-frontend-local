@@ -47,6 +47,19 @@
     <div class="detail-actions">
       <a [routerLink]="['/commercial/customer-discount/edit', item()!.id]" class="btn-primary">Editar</a>
       <button (click)="delete()" class="btn-danger-detail">Eliminar</button>
+
+      @if (showConfirm()) {
+        <div class="modal-overlay" (click)="cancelDelete()">
+          <div class="modal-box" (click)="$event.stopPropagation()">
+            <h3 class="modal-title">¿Eliminar asignación?</h3>
+            <p class="modal-desc">Esta acción no se puede deshacer.</p>
+            <div class="modal-actions">
+              <button class="btn-ghost" (click)="cancelDelete()">Cancelar</button>
+              <button class="btn-danger-modal" (click)="confirmDelete()">Eliminar</button>
+            </div>
+          </div>
+        </div>
+      }
       <a routerLink="/commercial/customer-discount" class="btn-ghost">Volver</a>
     </div>
 

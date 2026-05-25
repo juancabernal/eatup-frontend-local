@@ -13,30 +13,53 @@
   </div>
 </div>
 
-<div class="toolbar">
-  <input class="search-input"
-         type="text"
-         placeholder="Buscar por descuento o cliente..."
-         [ngModel]="search()"
-         (ngModelChange)="onSearch($event)" />
+<section class="filters-card">
+  <div class="filter-field filter-field--grow">
+    <label class="filter-label">Buscar</label>
+    <input class="search-input"
+           type="text"
+           placeholder="Descuento o cliente..."
+           [ngModel]="search()"
+           (ngModelChange)="onSearch($event)" />
+  </div>
+  <div class="filter-field">
+    <label class="filter-label">Ordenar por</label>
+    <select class="sort-select" [ngModel]="sortBy()" (ngModelChange)="onSort($event)">
+      <option value="">Sin orden</option>
+      <option value="assignedAt">Más reciente (asignación)</option>
+      <option value="startDate">Fecha de inicio</option>
+      <option value="endDate">Vencimiento próximo</option>
+    </select>
+  </div>
+  <div class="filter-field">
+    <label class="filter-label">Vencimiento</label>
+    <select class="sort-select" [ngModel]="expiryFilter()" (ngModelChange)="onExpiryFilter($event)">
+      <option value="all">Todos</option>
+      <option value="vigente">Vigentes</option>
+      <option value="por_vencer">Por vencer (30 días)</option>
+      <option value="vencido">Vencidos</option>
+    </select>
+  </div>
+  <div class="filter-actions">
+    <button class="btn-action" (click)="clearFilters()">✕ Limpiar</button>
+  </div>
+</section>
 
-  <select class="sort-select" [ngModel]="sortBy()" (ngModelChange)="onSort($event)">
-    <option value="">Ordenar por...</option>
-    <option value="assignedAt">Más reciente (asignación)</option>
-    <option value="startDate">Fecha de inicio</option>
-    <option value="endDate">Vencimiento próximo</option>
-  </select>
-
-  <button class="btn-reload" (click)="load()" [disabled]="loading()" title="Recargar lista">
-    ↺
-  </button>
-</div>
-<span class="result-count">
-  {{ filteredItems().length }} resultado(s)
+<div class="result-row">
+  <span class="result-count">
+  @if (!loading()) { {{ filteredItems().length }} resultado(s) }
+  @else { — }
 </span>
+  <button class="btn-reload-primary" (click)="load()" [disabled]="loading()" title="Recargar lista">↺</button>
+</div>
 
 @if (loading()) { <p class="loading">Cargando...</p> }
-@if (error()) { <div class="error-box"><strong>Error:</strong> {{ error() }}</div> }
+@if (error()) {
+  <div class="error-box">
+    <strong>Error:</strong> {{ error() }}
+    <button class="btn-retry" (click)="load()">Reintentar</button>
+  </div>
+}
 
 @if (!loading() && !error()) {
     <div class="table-container">
@@ -111,6 +134,18 @@
       <button (click)="goToPage(currentPage() - 1)" [disabled]="currentPage() === 1">← Anterior</button>
       <span>Página {{ currentPage() }} de {{ totalPages() || 1 }}</span>
       <button (click)="goToPage(currentPage() + 1)" [disabled]="currentPage() === totalPages() || totalPages() === 0">Siguiente →</button>
+    </div>
+  </div>
+}
+@if (confirmDeleteId()) {
+  <div class="modal-overlay" (click)="cancelDelete()">
+    <div class="modal-box" (click)="$event.stopPropagation()">
+      <h3 class="modal-title">¿Eliminar asignación?</h3>
+      <p class="modal-desc">Esta acción no se puede deshacer.</p>
+      <div class="modal-actions">
+        <button class="btn-ghost" (click)="cancelDelete()">Cancelar</button>
+        <button class="btn-danger-modal" (click)="confirmDelete()">Eliminar</button>
+      </div>
     </div>
   </div>
 }

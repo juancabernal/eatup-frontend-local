@@ -30,6 +30,7 @@ export class CustomerDiscountDetailPage implements OnInit {
   protected readonly locationName  = signal('—');
   protected readonly loading       = signal(true);
   protected readonly error         = signal('');
+  protected readonly showConfirm = signal(false);
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id') ?? '';
@@ -70,11 +71,19 @@ export class CustomerDiscountDetailPage implements OnInit {
   }
 
   protected delete(): void {
-    if (!confirm('¿Eliminar esta asignación?')) return;
+    this.showConfirm.set(true);
+  }
+
+  protected confirmDelete(): void {
+    this.showConfirm.set(false);
     const id = this.item()!.id;
     this.service.delete(id).subscribe({
       next:  () => this.router.navigate(['/commercial/customer-discount'], { state: { deletedId: id } }),
       error: () => this.error.set('Error al eliminar. Intenta de nuevo.')
     });
+  }
+
+  protected cancelDelete(): void {
+    this.showConfirm.set(false);
   }
 }
