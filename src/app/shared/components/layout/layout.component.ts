@@ -356,7 +356,8 @@ export class LayoutComponent {
         { name: 'Transfer',   path: '/inventory/transfer'   },
         { name: 'Categorías', path: '/inventory/categories' },
         { name: 'Productos',  path: '/inventory/product'    },
-        { name: 'Recetas',    path: '/inventory/recipes'    }
+        { name: 'Recetas',    path: '/inventory/recipes'    },
+        { name: 'Sedes',      path: '/inventor/locations' }
       ]
     }
   ]);
