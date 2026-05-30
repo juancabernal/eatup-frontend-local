@@ -6,6 +6,7 @@ export interface CategoryResponse {
   type: string;
   subtype: string;
   name: string;
+  locationId?: string;
   entryDate: string;
   status: CategoryStatus;
 }
@@ -14,6 +15,7 @@ export interface CreateCategoryRequest {
   type: string;
   subtype: string;
   name: string;
+  locationId: string;
 }
 
 export interface CategoryStatusUpdateRequest {

@@ -2,6 +2,8 @@ import { CommonModule, DatePipe } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Observable } from 'rxjs';
+import { LocationResponse } from '../../../location/models/location.model';
+import { LocationService } from '../../../location/services/location.service';
 import {
   CategoryListFilter,
   CategoryResponse,
@@ -55,6 +57,18 @@ type SearchMode = 'name' | 'type' | 'subtype';
                 class="input"
                 [(ngModel)]="newCategory.subtype"
                 placeholder="Ej: PRODUCTS" />
+            </div>
+            <div class="field-group">
+              <label for="locationId">Sede</label>
+              <select
+                id="locationId"
+                class="select"
+                [(ngModel)]="selectedLocationId">
+                <option value="">Seleccione una sede</option>
+                @for (location of locations(); track location.id) {
+                  <option [value]="location.id">{{ location.name }}</option>
+                }
+              </select>
             </div>
           </div>
           <div class="form-actions">
@@ -139,6 +153,7 @@ type SearchMode = 'name' | 'type' | 'subtype';
                   <th>Nombre</th>
                   <th>Tipo</th>
                   <th>Subtipo</th>
+                  <th>Sede</th>
                   <th>Fecha ingreso</th>
                   <th>Estado</th>
                   <th>Acciones</th>
@@ -151,6 +166,7 @@ type SearchMode = 'name' | 'type' | 'subtype';
                     <td class="strong">{{ category.name }}</td>
                     <td>{{ category.type }}</td>
                     <td>{{ category.subtype }}</td>
+                    <td>{{ locationName(category.locationId) }}</td>
                     <td>{{ category.entryDate | date:'dd/MM/yyyy HH:mm' }}</td>
                     <td>
                       <span [class]="'badge badge-' + category.status.toLowerCase()">
@@ -352,6 +368,7 @@ type SearchMode = 'name' | 'type' | 'subtype';
 })
 export class CategoryListComponent implements OnInit {
   private readonly categoryService = inject(CategoryService);
+  private readonly locationService = inject(LocationService);
 
   protected readonly filters: Array<{ label: string; value: CategoryListFilter }> = [
     { label: 'Todas', value: 'TODOS' },
@@ -367,16 +384,20 @@ export class CategoryListComponent implements OnInit {
   protected readonly bannerMessage = signal<string | null>(null);
   protected readonly selectedFilter = signal<CategoryListFilter>('TODOS');
   protected readonly processingId = signal<string | null>(null);
+  protected readonly locations = signal<LocationResponse[]>([]);
 
   protected searchMode: SearchMode = 'name';
   protected searchTerm = '';
+  protected selectedLocationId = '';
   protected newCategory: CreateCategoryRequest = {
     name: '',
     type: '',
-    subtype: ''
+    subtype: '',
+    locationId: ''
   };
 
   ngOnInit(): void {
+    this.loadLocations();
     this.loadCategories('TODOS');
   }
 
@@ -417,7 +438,8 @@ export class CategoryListComponent implements OnInit {
     return Boolean(
       this.newCategory.name.trim() &&
       this.newCategory.type.trim() &&
-      this.newCategory.subtype.trim()
+      this.newCategory.subtype.trim() &&
+      this.selectedLocationId
     );
   }
 
@@ -433,15 +455,19 @@ export class CategoryListComponent implements OnInit {
     const request: CreateCategoryRequest = {
       name: this.newCategory.name.trim(),
       type: this.newCategory.type.trim(),
-      subtype: this.newCategory.subtype.trim()
+      subtype: this.newCategory.subtype.trim(),
+      locationId: this.selectedLocationId
     };
 
     this.categoryService.create(request).subscribe({
       next: category => {
+        const locationName = this.selectedLocationName();
         this.isSaving.set(false);
         this.isCreating.set(false);
         this.resetForm();
-        this.bannerMessage.set(`Categoria ${category.name} creada correctamente.`);
+        this.bannerMessage.set(
+          `Categoria ${category.name} creada correctamente en la sede ${locationName}.`
+        );
         this.loadCategories(this.selectedFilter());
       },
       error: err => {
@@ -506,7 +532,28 @@ export class CategoryListComponent implements OnInit {
     this.newCategory = {
       name: '',
       type: '',
-      subtype: ''
+      subtype: '',
+      locationId: ''
     };
+    this.selectedLocationId = '';
+  }
+
+  private loadLocations(): void {
+    this.locationService.list().subscribe({
+      next: locations => this.locations.set((locations ?? []).filter(location => location.active)),
+      error: () => this.locations.set([])
+    });
+  }
+
+  private selectedLocationName(): string {
+    return this.locations().find(location => location.id === this.selectedLocationId)?.name ?? 'sede seleccionada';
+  }
+
+  protected locationName(locationId?: string | null): string {
+    if (!locationId) {
+      return 'Sin sede';
+    }
+
+    return this.locations().find(location => location.id === locationId)?.name ?? locationId.slice(0, 8);
   }
 }
