@@ -21,10 +21,10 @@ import { TablesStore } from '../store/tables.store';
       <button type="button" (click)="reload()">Actualizar</button>
     </header>
 
-    <section class="filters compact">
+    <section class="filters compact sessions-filters">
       <label class="status-filter">
         <span>Estado</span>
-        <select [(ngModel)]="statusFilter">
+        <select [ngModel]="statusFilter()" (ngModelChange)="setStatusFilter($event)">
           <option value="ALL">Todas</option>
           <option value="ACTIVE">Activas</option>
           <option value="CLOSED">Cerradas</option>
@@ -38,6 +38,11 @@ import { TablesStore } from '../store/tables.store';
           <option [value]="20">20</option>
         </select>
       </label>
+      <label class="status-filter">
+        <span>Fecha</span>
+        <input type="date" [ngModel]="dateFilter()" (ngModelChange)="setDateFilter($event)" />
+      </label>
+      <button type="button" class="clear-filters-btn" (click)="clearFilters()">Limpiar</button>
     </section>
 
     @if (store.loading() && filteredSessions().length === 0) {
@@ -90,16 +95,27 @@ export class TablesSessionsPage implements OnInit {
   readonly store = inject(TablesStore);
 
   readonly statusFilter = signal<'ALL' | 'ACTIVE' | 'CLOSED'>('ALL');
+  readonly dateFilter = signal('');
   readonly currentPage = signal(1);
   readonly pageSize = signal(5);
 
   readonly filteredSessions = computed(() => {
     const sessions = this.store.sessions();
     const filter = this.statusFilter();
+    const selectedDate = this.dateFilter();
 
-    if (filter === 'ACTIVE') return sessions.filter(s => !s.closedAt);
-    if (filter === 'CLOSED') return sessions.filter(s => !!s.closedAt);
-    return sessions;
+    return sessions.filter((session) => {
+      const statusMatches =
+        filter === 'ALL' ||
+        (filter === 'ACTIVE' && !session.closedAt) ||
+        (filter === 'CLOSED' && !!session.closedAt);
+      const dateMatches =
+        !selectedDate ||
+        this.isSameInputDate(session.openedAt, selectedDate) ||
+        this.isSameInputDate(session.closedAt, selectedDate);
+
+      return statusMatches && dateMatches;
+    });
   });
 
   readonly totalPages = computed(() => {
@@ -121,6 +137,22 @@ export class TablesSessionsPage implements OnInit {
     this.store.loadTables();
   }
 
+  setStatusFilter(filter: 'ALL' | 'ACTIVE' | 'CLOSED'): void {
+    this.statusFilter.set(filter);
+    this.goToPage(1);
+  }
+
+  setDateFilter(date: string): void {
+    this.dateFilter.set(date);
+    this.goToPage(1);
+  }
+
+  clearFilters(): void {
+    this.statusFilter.set('ALL');
+    this.dateFilter.set('');
+    this.goToPage(1);
+  }
+
   goToPage(page: number): void {
     this.currentPage.set(page);
   }
@@ -133,5 +165,18 @@ export class TablesSessionsPage implements OnInit {
     if (!tableId) return 'Sin asignar';
     const table = this.store.tables().find(t => t.id === tableId);
     return table ? String(table.tableNumber) : tableId;
+  }
+
+  private isSameInputDate(value: string | undefined, inputDate: string): boolean {
+    if (!value) return false;
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return false;
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}` === inputDate;
   }
 }

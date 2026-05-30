@@ -255,6 +255,23 @@ td {
   padding: 16px;
 }
 
+.filters.compact.sessions-filters {
+  column-gap: 28px;
+  grid-template-columns: 220px 150px 240px auto;
+  justify-content: start;
+}
+
+.sessions-filters .status-filter {
+  min-width: 0;
+  width: 100%;
+}
+
+.sessions-filters .status-filter input,
+.sessions-filters .status-filter select {
+  box-sizing: border-box;
+  width: 100%;
+}
+
 .filters label {
   color: #1B1B1B;
   display: grid;
@@ -331,6 +348,10 @@ dd {
   dl {
     grid-template-columns: 1fr;
   }
+
+  .filters.compact.sessions-filters {
+    grid-template-columns: 1fr;
+  }
 }
 
 
@@ -392,6 +413,31 @@ dd {
 .status-filter select:focus {
   border-color: #6366f1;
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.clear-filters-btn {
+  align-self: end;
+  background: transparent;
+  border: 1px solid rgba(27, 27, 27, 0.14);
+  border-radius: 999px;
+  color: #1B1B1B;
+  font-size: 12px;
+  font-weight: 700;
+  min-height: 34px;
+  padding: 0 12px;
+  width: 76px;
+}
+
+.clear-filters-btn:hover {
+  background: rgba(255, 107, 53, 0.1);
+  box-shadow: none;
+  color: #FF6B35;
+  transform: none;
+}
+
+.sessions-filters .clear-filters-btn {
+  justify-self: start;
+  margin: 0 0 2px 4px;
 }
 
 
