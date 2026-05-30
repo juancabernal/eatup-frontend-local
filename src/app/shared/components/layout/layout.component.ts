@@ -259,6 +259,8 @@ export class LayoutComponent {
       this.isMobileSidebarOpen.set(true);
     } else {
       this.toggleSidebar();
+    }
+  }
       
   protected readonly modules = signal([
     {
@@ -294,7 +296,7 @@ export class LayoutComponent {
         { name: 'Sedes',      path: '/inventor/locations' }
       ]
     }
-  }
+  ]);
 
   closeMobileSidebar(): void {
     this.isMobileSidebarOpen.set(false);
