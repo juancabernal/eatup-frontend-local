@@ -2,9 +2,15 @@ import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { ENV } from '@config/env.config';
 import { CreateTransferRequest } from '../../models/transfer.model';
 import { TransferService } from '../../services/transfer.service';
+import { TransferReferenceDataService } from '../../services/transfer-reference-data.service';
+import { UserProfileService } from '@features/user/services/user-profile.service';
+import {
+  UserSummaryResponse
+} from '@features/user/models/user-profile.model';
+import { ProductResponse } from '@features/inventory/product/models/product.model';
+import { LocationResponse } from '@features/inventory/location/models/location.model';
 
 @Component({
   selector: 'app-transfer-create-page',
@@ -29,27 +35,29 @@ import { TransferService } from '../../services/transfer.service';
           <div class="section-grid">
             <div class="field">
               <label for="sedeOrigen">Sede origen</label>
-              <input
-                id="sedeOrigen"
-                type="text"
-                class="input"
-                [(ngModel)]="form.sedeOrigen"
-                name="sedeOrigen"
-                placeholder="UUID de sede origen"
-                required>
-              <small>Se precarga con la sede del entorno local.</small>
+              <div class="locked-field">
+                <span>{{ currentLocationLabel() }}</span>
+                <small>{{ currentLocationId() || 'Cargando sede...' }}</small>
+              </div>
+              <small>Se precarga con la sede autenticada del usuario.</small>
             </div>
 
             <div class="field">
               <label for="sedeDestino">Sede destino</label>
-              <input
+              <select
                 id="sedeDestino"
-                type="text"
                 class="input"
                 [(ngModel)]="form.sedeDestino"
                 name="sedeDestino"
-                placeholder="UUID de sede destino"
                 required>
+                <option value="" disabled>Selecciona la sede destino</option>
+                @for (location of destinationLocations(); track location.id) {
+                  <option [value]="location.id" [disabled]="!location.active">
+                    {{ destinationLabel(location) }}
+                  </option>
+                }
+              </select>
+              <small>Elige la sede por nombre y ciudad; las inactivas quedan deshabilitadas.</small>
             </div>
 
             <div class="field">
@@ -76,26 +84,40 @@ import { TransferService } from '../../services/transfer.service';
 
             <div class="field">
               <label for="responsable">Responsable</label>
-              <input
+              <select
                 id="responsable"
-                type="text"
                 class="input"
                 [(ngModel)]="form.responsable"
                 name="responsable"
-                placeholder="Nombre de quien despacha"
-                required>
+                required
+                [disabled]="loadingContext() || !responsibleUsers().length">
+                <option value="" disabled>Selecciona el responsable</option>
+                @for (user of responsibleUsers(); track user.email) {
+                  <option [value]="responsibleValue(user)">
+                    {{ responsibleLabel(user) }}
+                  </option>
+                }
+              </select>
+              <small>El backend guardara el nombre del usuario seleccionado.</small>
             </div>
 
             <div class="field">
               <label for="producto">Producto</label>
-              <input
+              <select
                 id="producto"
-                type="text"
                 class="input"
                 [(ngModel)]="form.producto"
                 name="producto"
-                placeholder="Nombre del producto"
-                required>
+                required
+                [disabled]="loadingContext() || !productOptions().length">
+                <option value="" disabled>Selecciona el producto</option>
+                @for (product of productOptions(); track product.id) {
+                  <option [value]="product.name">
+                    {{ productLabel(product) }}
+                  </option>
+                }
+              </select>
+              <small>Se enviara el nombre exacto del producto al backend.</small>
             </div>
 
             <div class="field">
@@ -204,6 +226,24 @@ import { TransferService } from '../../services/transfer.service';
       border-color: var(--color-primary);
       box-shadow: 0 0 0 3px rgba(255,107,53,0.2);
     }
+    .locked-field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      border: 1px solid #e2e8f0;
+      border-radius: 0.75rem;
+      padding: 0.85rem 0.9rem;
+      background: #f8fafc;
+    }
+    .locked-field span {
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .locked-field small {
+      word-break: break-all;
+      font-size: 0.8rem;
+      color: #64748b;
+    }
     .textarea { resize: vertical; min-height: 120px; }
     .action-row { display: flex; gap: 1rem; align-items: center; margin-top: 1rem; }
     .btn-primary, .btn-ghost {
@@ -235,13 +275,21 @@ import { TransferService } from '../../services/transfer.service';
 export class TransferCreatePageComponent {
   private readonly transferService = inject(TransferService);
   private readonly router = inject(Router);
+  private readonly userProfileService = inject(UserProfileService);
+  private readonly referenceDataService = inject(TransferReferenceDataService);
 
   protected readonly submitting = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly successMessage = signal<string | null>(null);
+  protected readonly loadingContext = signal(true);
+  protected readonly destinationLocations = signal<LocationResponse[]>([]);
+  protected readonly responsibleUsers = signal<UserSummaryResponse[]>([]);
+  protected readonly productOptions = signal<ProductResponse[]>([]);
+  protected readonly currentLocationId = signal<string>('');
+  protected readonly currentLocationLabel = signal('Sede autenticada');
 
   protected readonly form = {
-    sedeOrigen: ENV.locationId,
+    sedeOrigen: '',
     sedeDestino: '',
     fechaEnvio: '',
     fechaLlegada: '',
@@ -250,6 +298,10 @@ export class TransferCreatePageComponent {
     cantidad: 1,
     observaciones: ''
   };
+
+  async ngOnInit(): Promise<void> {
+    await this.loadCurrentLocation();
+  }
 
   protected isFormValid(): boolean {
     return Boolean(
@@ -273,7 +325,7 @@ export class TransferCreatePageComponent {
     this.successMessage.set(null);
 
     const payload: CreateTransferRequest = {
-      sedeOrigen: this.form.sedeOrigen.trim(),
+      sedeOrigen: this.currentLocationId() || this.form.sedeOrigen.trim(),
       sedeDestino: this.form.sedeDestino.trim(),
       fechaEnvio: this.toIsoLocal(this.form.fechaEnvio),
       fechaLlegada: this.toIsoLocal(this.form.fechaLlegada),
@@ -298,5 +350,99 @@ export class TransferCreatePageComponent {
 
   private toIsoLocal(value: string): string {
     return value.length === 16 ? `${value}:00` : value;
+  }
+
+  private async loadCurrentLocation(): Promise<void> {
+    this.loadingContext.set(true);
+
+    try {
+      const profile = await this.userProfileService.loadProfileData();
+      const currentLocationId = profile.editable.locationId || '';
+      this.currentLocationId.set(currentLocationId);
+      this.form.sedeOrigen = currentLocationId;
+      this.form.responsable = this.buildPersonName(
+        profile.editable.firstName,
+        profile.editable.lastName,
+        profile.editable.email
+      );
+      this.currentLocationLabel.set(
+        profile.locations.find(location => location.id === currentLocationId)?.name || 'Sede autenticada'
+      );
+      this.destinationLocations.set([]);
+      await this.loadReferenceData(currentLocationId);
+    } catch {
+      this.error.set('No se pudo cargar la sede del usuario autenticado.');
+    } finally {
+      this.loadingContext.set(false);
+    }
+  }
+
+  private async loadReferenceData(locationId: string): Promise<void> {
+    const [responsablesResult, productsResult, locationsResult] = await Promise.allSettled([
+      this.referenceDataService.loadResponsables(),
+      this.referenceDataService.loadProductsByLocation(locationId),
+      this.referenceDataService.loadSelectableLocations()
+    ]);
+
+    if (responsablesResult.status === 'fulfilled') {
+      this.responsibleUsers.set(responsablesResult.value);
+    } else {
+      this.error.set('No se pudo cargar la lista de responsables.');
+    }
+
+    if (productsResult.status === 'fulfilled') {
+      this.productOptions.set(productsResult.value);
+    } else {
+      const currentError = this.error();
+      this.error.set(
+        currentError
+          ? `${currentError} No se pudo cargar el catalogo de productos.`
+          : 'No se pudo cargar el catalogo de productos.'
+      );
+    }
+
+    if (locationsResult.status === 'fulfilled') {
+      this.destinationLocations.set(
+        locationsResult.value.filter(location => location.id !== locationId)
+      );
+    } else {
+      const currentError = this.error();
+      this.error.set(
+        currentError
+          ? `${currentError} No se pudo cargar el catalogo de sedes.`
+          : 'No se pudo cargar el catalogo de sedes.'
+      );
+    }
+  }
+
+  protected responsibleValue(user: UserSummaryResponse): string {
+    return this.buildPersonName(user.firstName, user.lastName, user.email);
+  }
+
+  protected responsibleLabel(user: UserSummaryResponse): string {
+    const value = this.responsibleValue(user);
+    return user.email ? `${value} — ${user.email}` : value;
+  }
+
+  protected productLabel(product: ProductResponse): string {
+    return `${product.name} — ${product.stock} ${product.unitOfMeasure}`;
+  }
+
+  protected destinationLabel(location: LocationResponse): string {
+    return `${location.name} - ${location.city}${location.active ? '' : ' (Inactiva)'}`;
+  }
+
+  private buildPersonName(
+    firstName?: string | null,
+    lastName?: string | null,
+    fallback?: string | null
+  ): string {
+    const fullName = [firstName, lastName]
+      .map(value => value?.trim())
+      .filter(Boolean)
+      .join(' ')
+      .trim();
+
+    return fullName || fallback?.trim() || '';
   }
 }

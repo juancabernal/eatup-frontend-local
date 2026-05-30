@@ -2,12 +2,12 @@ import { CommonModule, DatePipe } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { ENV } from '@config/env.config';
 import {
   TransferListFilter,
   TransferResponse
 } from '../../models/transfer.model';
 import { TransferService } from '../../services/transfer.service';
+import { UserProfileService } from '@features/user/services/user-profile.service';
 import { Observable } from 'rxjs';
 
 @Component({
@@ -280,8 +280,10 @@ import { Observable } from 'rxjs';
 })
 export class TransferListPageComponent implements OnInit {
   private readonly transferService = inject(TransferService);
+  private readonly userProfileService = inject(UserProfileService);
 
-  protected readonly locationId = ENV.locationId;
+  protected readonly locationId = signal<string | null>(null);
+  protected readonly loadingContext = signal(true);
   protected readonly filters: Array<{ label: string; value: TransferListFilter }> = [
     { label: 'Todos', value: 'TODOS' },
     { label: 'Entrantes', value: 'ENTRANTES' },
@@ -300,11 +302,15 @@ export class TransferListPageComponent implements OnInit {
   protected readonly openClaimId = signal<number | null>(null);
   protected claimText = '';
 
-  ngOnInit(): void {
-    this.loadTransfers('TODOS');
+  async ngOnInit(): Promise<void> {
+    await this.loadCurrentLocation();
+    if (this.locationId()) {
+      this.loadTransfers('TODOS');
+    }
   }
 
   protected loadTransfers(filter: TransferListFilter): void {
+    const currentLocationId = this.locationId() ?? '';
     this.selectedFilter.set(filter);
     this.isLoading.set(true);
     this.error.set(null);
@@ -316,7 +322,7 @@ export class TransferListPageComponent implements OnInit {
 
     switch (filter) {
       case 'ENTRANTES':
-        request$ = this.transferService.getIncoming(this.locationId);
+        request$ = this.transferService.getIncoming(currentLocationId);
         break;
       case 'EN_TRANSITO':
         request$ = this.transferService.getInTransit();
@@ -349,41 +355,54 @@ export class TransferListPageComponent implements OnInit {
   }
 
   protected canSendToTransit(transfer: TransferResponse): boolean {
-    return transfer.sedeOrigen === this.locationId && transfer.estado === 'EN_PROCESO';
+    const currentLocationId = this.locationId();
+    return !!currentLocationId && transfer.sedeOrigen === currentLocationId && transfer.estado === 'EN_PROCESO';
   }
 
   protected canCancel(transfer: TransferResponse): boolean {
-    return transfer.sedeOrigen === this.locationId && transfer.estado === 'EN_PROCESO';
+    const currentLocationId = this.locationId();
+    return !!currentLocationId && transfer.sedeOrigen === currentLocationId && transfer.estado === 'EN_PROCESO';
   }
 
   protected canConfirm(transfer: TransferResponse): boolean {
-    return transfer.sedeDestino === this.locationId && transfer.estado === 'EN_TRANSITO';
+    const currentLocationId = this.locationId();
+    return !!currentLocationId && transfer.sedeDestino === currentLocationId && transfer.estado === 'EN_TRANSITO';
   }
 
   protected canClaim(transfer: TransferResponse): boolean {
-    return transfer.sedeDestino === this.locationId && transfer.estado === 'EN_TRANSITO';
+    const currentLocationId = this.locationId();
+    return !!currentLocationId && transfer.sedeDestino === currentLocationId && transfer.estado === 'EN_TRANSITO';
   }
 
   protected sendToTransit(transfer: TransferResponse): void {
+    const currentLocationId = this.locationId();
+    if (!currentLocationId) return;
+
     this.runAction(
       transfer.idTraslado,
-      this.transferService.sendToTransit(transfer.idTraslado, this.locationId),
+      this.transferService.sendToTransit(transfer.idTraslado, currentLocationId),
       `Traslado #${transfer.idTraslado} enviado a transito.`
     );
   }
 
   protected cancelTransfer(transfer: TransferResponse): void {
+    const currentLocationId = this.locationId();
+    if (!currentLocationId) return;
+
     this.runAction(
       transfer.idTraslado,
-      this.transferService.cancel(transfer.idTraslado, this.locationId),
+      this.transferService.cancel(transfer.idTraslado, currentLocationId),
       `Traslado #${transfer.idTraslado} cancelado correctamente.`
     );
   }
 
   protected confirmTransfer(transfer: TransferResponse): void {
+    const currentLocationId = this.locationId();
+    if (!currentLocationId) return;
+
     this.runAction(
       transfer.idTraslado,
-      this.transferService.confirm(transfer.idTraslado, this.locationId),
+      this.transferService.confirm(transfer.idTraslado, currentLocationId),
       `Traslado #${transfer.idTraslado} completado y recibido.`
     );
   }
@@ -401,13 +420,17 @@ export class TransferListPageComponent implements OnInit {
 
   protected submitClaim(transfer: TransferResponse): void {
     const observaciones = this.claimText.trim();
+    const currentLocationId = this.locationId();
     if (!observaciones) {
+      return;
+    }
+    if (!currentLocationId) {
       return;
     }
 
     this.runAction(
       transfer.idTraslado,
-      this.transferService.claim(transfer.idTraslado, this.locationId, { observaciones }),
+      this.transferService.claim(transfer.idTraslado, currentLocationId, { observaciones }),
       `Reclamo registrado para el traslado #${transfer.idTraslado}.`
     );
   }
@@ -417,10 +440,11 @@ export class TransferListPageComponent implements OnInit {
   }
 
   protected roleLabel(transfer: TransferResponse): string {
-    if (transfer.sedeOrigen === this.locationId) {
+    const currentLocationId = this.locationId();
+    if (currentLocationId && transfer.sedeOrigen === currentLocationId) {
       return 'Tu sede es origen';
     }
-    if (transfer.sedeDestino === this.locationId) {
+    if (currentLocationId && transfer.sedeDestino === currentLocationId) {
       return 'Tu sede es destino';
     }
     return 'Traslado de otra sede';
@@ -452,5 +476,19 @@ export class TransferListPageComponent implements OnInit {
         this.error.set(err?.error?.message ?? 'No fue posible ejecutar la accion.');
       }
     });
+  }
+
+  private async loadCurrentLocation(): Promise<void> {
+    this.loadingContext.set(true);
+
+    try {
+      const profile = await this.userProfileService.loadProfileData();
+      this.locationId.set(profile.editable.locationId || null);
+    } catch {
+      this.locationId.set(null);
+      this.error.set('No se pudo cargar la sede del usuario autenticado.');
+    } finally {
+      this.loadingContext.set(false);
+    }
   }
 }
