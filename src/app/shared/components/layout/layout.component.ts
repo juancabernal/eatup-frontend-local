@@ -344,6 +344,7 @@ export class LayoutComponent {
         { name: 'Descuentos', path: '/commercial/discount' },
         { name: 'Vendedores', path: '/commercial/seller' },
         { name: 'Compras',    path: '/commercial/purchases' },
+        { name: 'Proveedores', path: '/commercial/provider' },
         { name: 'Mesas',      path: '/commercial/tables' },
         { name: 'Ventas',     path: '/commercial/sales' }
       ]

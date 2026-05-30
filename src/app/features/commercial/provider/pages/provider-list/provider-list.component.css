@@ -211,6 +211,7 @@ select {
   justify-content: center;
   min-height: 44px;
   padding: 0 18px;
+  text-decoration: none;
   white-space: nowrap;
 }
 
@@ -225,6 +226,18 @@ select {
   color: var(--provider-text);
   min-height: 38px;
   padding: 0 12px;
+  text-decoration: none;
+}
+
+.inline-error {
+  background: rgba(255, 107, 53, 0.08);
+  border: 1px solid rgba(255, 107, 53, 0.25);
+  border-radius: 10px;
+  color: #c44a1f;
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  padding: 12px 14px;
 }
 
 button:disabled {

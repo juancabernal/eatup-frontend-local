@@ -91,6 +91,13 @@ export const routes: Routes = [
           )
       },
       {
+        path: 'commercial/provider',
+        loadChildren: () =>
+          import('./features/commercial/provider/provider.routes').then(
+            m => m.PROVIDER_ROUTES
+          )
+      },
+      {
         path: 'inventory/product',
         loadChildren: () =>
           import('./features/inventory/product/product.routes').then(

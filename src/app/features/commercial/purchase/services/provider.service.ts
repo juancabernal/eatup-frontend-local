@@ -12,7 +12,7 @@ export interface ProviderDTO {
 @Injectable({ providedIn: 'root' })
 export class ProviderService {
 
-  private url = `${ENV.apiUrl}/commercial/api/v1/providers`;
+  private url = `${ENV.apiUrl.replace('/api/v1', '')}/commercial/api/v1/providers`;
 
   constructor(private http: HttpClient) {}
 

@@ -1,9 +1,10 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, map } from 'rxjs';
+import { Observable, delay, map } from 'rxjs';
 
 import { ENV } from '@config/env.config';
 import {
+  ApiErrorBody,
   CreateProviderRequest,
   Provider,
   ProviderStatus,
@@ -11,10 +12,12 @@ import {
   UpdateProviderStatusRequest,
 } from '@commercial/provider/models/provider.model';
 
+const ASYNC_PROCESSING_DELAY_MS = 500;
+
 @Injectable({ providedIn: 'root' })
 export class ProvidersService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = `${ENV.apiUrl}/commercial/api/v1/providers`;
+  private readonly baseUrl = `${ENV.apiUrl.replace('/api/v1', '')}/commercial/api/v1/providers`;
 
   getProviders(status?: ProviderStatus): Observable<Provider[]> {
     const params = status ? new HttpParams().set('status', status) : undefined;
@@ -28,17 +31,19 @@ export class ProvidersService {
     return this.http.get<Provider>(`${this.baseUrl}/${id}`);
   }
 
-  createProvider(payload: CreateProviderRequest): Observable<{ message: string }> {
-    return this.http.post<{ message: string }>(this.baseUrl, payload);
+  createProvider(payload: CreateProviderRequest): Observable<void> {
+    return this.http.post<void>(this.baseUrl, payload).pipe(delay(ASYNC_PROCESSING_DELAY_MS));
   }
 
-  updateProvider(id: string, payload: UpdateProviderRequest): Observable<{ message: string }> {
-    return this.http.put<{ message: string }>(`${this.baseUrl}/${id}`, payload);
+  updateProvider(id: string, payload: UpdateProviderRequest): Observable<void> {
+    return this.http.put<void>(`${this.baseUrl}/${id}`, payload).pipe(delay(ASYNC_PROCESSING_DELAY_MS));
   }
 
-  updateStatus(id: string, status: ProviderStatus): Observable<{ message: string }> {
+  updateStatus(id: string, status: ProviderStatus): Observable<void> {
     const payload: UpdateProviderStatusRequest = { status };
-    return this.http.patch<{ message: string }>(`${this.baseUrl}/${id}/status`, payload);
+    return this.http
+      .patch<void>(`${this.baseUrl}/${id}/status`, payload)
+      .pipe(delay(ASYNC_PROCESSING_DELAY_MS));
   }
 
   private normalizeList(response: unknown): Provider[] {
@@ -59,4 +64,26 @@ export class ProvidersService {
   private isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null;
   }
+}
+
+export function getProviderErrorMessage(error: unknown): string {
+  if (!(error instanceof HttpErrorResponse)) {
+    return 'Ocurrió un error inesperado';
+  }
+
+  const body = error.error as ApiErrorBody | null;
+
+  if (error.status === 400) {
+    return body?.message ?? 'Solicitud no válida';
+  }
+
+  if (error.status === 404) {
+    return 'Proveedor no encontrado';
+  }
+
+  if (error.status === 500) {
+    return 'Error interno del servidor, intenta de nuevo';
+  }
+
+  return body?.message ?? 'Ocurrió un error inesperado';
 }

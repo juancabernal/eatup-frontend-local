@@ -49,10 +49,10 @@
         (input)="onSearch($event)" />
     </label>
 
-    <button type="button" class="primary-button" (click)="openCreate()">
+    <a routerLink="/commercial/provider/create" class="primary-button">
       <span aria-hidden="true">+</span>
       Nuevo proveedor
-    </button>
+    </a>
   </div>
 
   <div class="filter-chips" role="group" aria-label="Filtrar por estado">
@@ -79,6 +79,10 @@
     </button>
   </div>
 
+  @if (error()) {
+    <div class="inline-error" role="alert">{{ error() }}</div>
+  }
+
   @if (loading()) {
     <div class="loading-state">
       <span class="spinner" aria-hidden="true"></span>
@@ -91,7 +95,7 @@
       <section class="empty-state">
         <h2>No hay proveedores para mostrar</h2>
         <p>Crea un proveedor o ajusta la búsqueda y los filtros.</p>
-        <button type="button" class="primary-button" (click)="openCreate()">Nuevo proveedor</button>
+        <a routerLink="/commercial/provider/create" class="primary-button">Nuevo proveedor</a>
       </section>
     } @else {
       <div class="table-card">
@@ -109,7 +113,7 @@
             </tr>
           </thead>
           <tbody>
-            @for (provider of paginatedProviders(); track provider.id ?? provider.documentNumber) {
+            @for (provider of paginatedProviders(); track provider.id) {
               <tr [class.row-inactive]="statusOf(provider) === 'INACTIVE'">
                 <td class="strong">{{ provider.businessName }}</td>
                 <td>
@@ -129,9 +133,11 @@
                   <app-provider-status-badge [status]="statusOf(provider)" />
                 </td>
                 <td class="actions">
-                  <button type="button" class="action-button" (click)="openEdit(provider)">
+                  <a
+                    [routerLink]="['/commercial/provider/edit', provider.id]"
+                    class="action-button">
                     Editar
-                  </button>
+                  </a>
                   <button
                     type="button"
                     class="action-button"
@@ -139,7 +145,7 @@
                     [disabled]="!provider.id || changingStatus() === provider.id"
                     (click)="toggleStatus(provider)">
                     @if (changingStatus() === provider.id) {
-                      Guardando...
+                      Enviando...
                     } @else {
                       {{ statusOf(provider) === 'ACTIVE' ? 'Desactivar' : 'Activar' }}
                     }
@@ -173,186 +179,6 @@
     }
   }
 </section>
-
-@if (drawerOpen()) {
-  <div class="drawer-overlay" (click)="closeDrawer()">
-    <aside class="drawer" (click)="$event.stopPropagation()">
-      <form [formGroup]="form" (ngSubmit)="saveProvider()">
-        <header class="drawer-header">
-          <div>
-            <span>Proveedor</span>
-            <h2>{{ formMode() === 'create' ? 'Nuevo proveedor' : 'Editar proveedor' }}</h2>
-          </div>
-          <button type="button" class="icon-button" aria-label="Cerrar" (click)="closeDrawer()">×</button>
-        </header>
-
-        <input type="hidden" formControlName="branchId" />
-
-        <div class="form-section">
-          <h3>Datos del negocio</h3>
-          <div class="form-grid">
-            <label class="full-width">
-              Razón social
-              <input type="text" formControlName="businessName" maxlength="150" />
-              @if (showFieldError('businessName')) {
-                <small>{{ fieldError('businessName') }}</small>
-              }
-            </label>
-
-            <label>
-              Tipo de documento
-              <select formControlName="documentTypeId">
-                <option value="" disabled>Selecciona</option>
-                @if (hasUnknownDocumentType()) {
-                  <option [value]="form.controls.documentTypeId.value">Tipo registrado</option>
-                }
-                @for (type of documentTypes; track type.id) {
-                  <option [value]="type.id">{{ type.label }}</option>
-                }
-              </select>
-              @if (showFieldError('documentTypeId')) {
-                <small>{{ fieldError('documentTypeId') }}</small>
-              }
-            </label>
-
-            <label>
-              Número de documento
-              <input
-                type="text"
-                formControlName="documentNumber"
-                inputmode="numeric"
-                maxlength="20"
-                (keypress)="onlyDigits($event)" />
-              @if (showFieldError('documentNumber')) {
-                <small>{{ fieldError('documentNumber') }}</small>
-              }
-            </label>
-
-            <label class="full-width">
-              Régimen tributario
-              <select formControlName="taxRegimeId">
-                <option value="" disabled>Selecciona</option>
-                @if (hasUnknownTaxRegime()) {
-                  <option [value]="form.controls.taxRegimeId.value">Régimen registrado</option>
-                }
-                @for (regime of taxRegimes; track regime.id) {
-                  <option [value]="regime.id">{{ regime.label }}</option>
-                }
-              </select>
-              @if (showFieldError('taxRegimeId')) {
-                <small>{{ fieldError('taxRegimeId') }}</small>
-              }
-            </label>
-          </div>
-        </div>
-
-        <div class="form-section">
-          <h3>Responsable y contacto</h3>
-          <div class="form-grid">
-            <label>
-              Nombre
-              <input type="text" formControlName="responsibleFirstName" maxlength="100" />
-              @if (showFieldError('responsibleFirstName')) {
-                <small>{{ fieldError('responsibleFirstName') }}</small>
-              }
-            </label>
-
-            <label>
-              Apellido
-              <input type="text" formControlName="responsibleLastName" maxlength="100" />
-              @if (showFieldError('responsibleLastName')) {
-                <small>{{ fieldError('responsibleLastName') }}</small>
-              }
-            </label>
-
-            <label>
-              Teléfono
-              <input
-                type="tel"
-                formControlName="phone"
-                inputmode="numeric"
-                maxlength="10"
-                (keypress)="onlyDigits($event)" />
-              @if (showFieldError('phone')) {
-                <small>{{ fieldError('phone') }}</small>
-              }
-            </label>
-
-            <label>
-              Correo electrónico
-              <input type="email" formControlName="email" />
-              @if (formMode() === 'edit') {
-                <span class="field-hint">El correo no se puede modificar.</span>
-              }
-              @if (showFieldError('email')) {
-                <small>{{ fieldError('email') }}</small>
-              }
-            </label>
-          </div>
-        </div>
-
-        <div class="form-section">
-          <h3>Ubicación</h3>
-          <div class="form-grid">
-            <label>
-              Departamento
-              <select formControlName="departmentId">
-                <option value="" disabled>Selecciona</option>
-                @for (dept of departments; track dept.id) {
-                  <option [value]="dept.id">{{ dept.label }}</option>
-                }
-              </select>
-              @if (showFieldError('departmentId')) {
-                <small>{{ fieldError('departmentId') }}</small>
-              }
-            </label>
-
-            <label>
-              Ciudad
-              <select formControlName="cityId">
-                <option value="" disabled>Selecciona</option>
-                @for (city of availableCities(); track city.id) {
-                  <option [value]="city.id">{{ city.label }}</option>
-                }
-              </select>
-              @if (showFieldError('cityId')) {
-                <small>{{ fieldError('cityId') }}</small>
-              }
-            </label>
-
-            <label class="full-width">
-              Dirección
-              <input type="text" formControlName="address" maxlength="200" />
-              @if (showFieldError('address')) {
-                <small>{{ fieldError('address') }}</small>
-              }
-            </label>
-
-            @if (formMode() === 'edit') {
-              <label>
-                Estado
-                <select formControlName="status">
-                  <option value="ACTIVE">Activo</option>
-                  <option value="INACTIVE">Inactivo</option>
-                </select>
-                @if (showFieldError('status')) {
-                  <small>{{ fieldError('status') }}</small>
-                }
-              </label>
-            }
-          </div>
-        </div>
-
-        <footer class="drawer-actions">
-          <button type="button" class="secondary-button" (click)="closeDrawer()">Cancelar</button>
-          <button type="submit" class="primary-button" [disabled]="saving()">
-            {{ saving() ? 'Guardando...' : 'Guardar' }}
-          </button>
-        </footer>
-      </form>
-    </aside>
-  </div>
-}
 
 @if (toast(); as currentToast) {
   <aside class="provider-toast" [class.error]="currentToast.type === 'error'">
