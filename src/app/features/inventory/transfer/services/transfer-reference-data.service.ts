@@ -50,13 +50,12 @@ export class TransferReferenceDataService {
     for (let page = 0; page < 30; page++) {
       const response = await firstValueFrom(
         this.http.get<PageResponse<ProductResponse>>(
-          `${this.inventoryApiRoot}/inventory/product`,
+          `${this.inventoryApiRoot}/inventory/product/location/${locationId}`,
           { params: { page: String(page), size: String(pageSize) } }
         )
       );
 
-      const pageProducts = (response?.content ?? [])
-        .filter((product: ProductResponse) => product.locationId === locationId);
+      const pageProducts = response?.content ?? [];
 
       products.push(...pageProducts);
 

@@ -43,6 +43,7 @@ export interface TransferClaimRequest {
 export type TransferListFilter =
   | 'TODOS'
   | 'ENTRANTES'
+  | 'SALIENTES'
   | 'EN_TRANSITO'
   | 'COMPLETADOS'
   | 'CANCELADOS'
