@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, HostListener, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Subject, EMPTY, interval } from 'rxjs';
 import { retry, finalize, takeUntil, switchMap, catchError } from 'rxjs/operators';
@@ -171,6 +171,36 @@ private silentRefresh(): void {
   this.discountService.getAll().pipe(
     catchError(() => EMPTY)
   ).subscribe(data => this.discounts.set(data));
+}
+
+protected exportCsv(): void {
+  const headers = ['Descripción', 'Categoría', 'Porcentaje', 'Estado', 'Creado', 'Modificado'];
+  const rows = this.filteredDiscounts().map(d => [
+    d.description,
+    this.categoryName(d.categoryId),
+    `${d.percentage}%`,
+    d.status ? 'Activo' : 'Inactivo',
+    d.createdAt  ? new Date(d.createdAt).toLocaleDateString('es-CO')  : '—',
+    d.modifiedAt ? new Date(d.modifiedAt).toLocaleDateString('es-CO') : '—'
+  ]);
+  const csv = [headers, ...rows]
+    .map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  const hoy = new Date();
+  const fecha = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}-${String(hoy.getDate()).padStart(2,'0')}`;
+  a.download = `descuentos-${fecha}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  this.showToast('success', 'CSV exportado correctamente.');
+}
+
+@HostListener('document:keydown.escape')
+protected onEscape(): void {
+  if (this.confirmToggleId()) this.cancelToggle();
 }
 
 ngOnDestroy(): void {

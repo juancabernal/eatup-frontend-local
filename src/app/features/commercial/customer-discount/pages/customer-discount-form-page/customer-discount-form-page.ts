@@ -9,6 +9,7 @@ import { CustomerDiscount } from '@commercial/customer-discount/models/customer-
 import { DiscountService } from '@commercial/discount/services/discount';
 import { Discount } from '@commercial/discount/models/discount.model';
 import { ENV } from '@config/env.config';
+import { forkJoin, of } from 'rxjs';
 import { AuthService } from '@features/user/services/auth.service';
 import { CustomerDiscountRefreshService } from '@commercial/customer-discount/services/customer-discount-refresh.service';
 
@@ -70,20 +71,23 @@ export class CustomerDiscountFormPage implements OnInit {
   get endDateCtrl()    { return this.form.get('endDate')!; }
 
   ngOnInit(): void {
-    this.discountService.getAll().subscribe({
-      next: (data) => this.discounts.set(data.filter(d => d.status))
-    });
+    const loc$ = this.locationId
+      ? this.locationService.getById(this.locationId)
+      : of(null);
 
-    this.clientService.getAllActive().subscribe({
-      next: (data) => this.clients.set(data)
+    forkJoin([
+      this.discountService.getAll(),
+      this.clientService.getAllActive(),
+      loc$
+    ]).subscribe({
+      next: ([discounts, clients, loc]) => {
+        this.discounts.set(discounts.filter(d => d.status));
+        this.clients.set(clients);
+        if (loc) this.locationName.set(loc.name);
+        else this.locationName.set('Sin ubicación');
+      },
+      error: () => this.locationName.set('Error al cargar datos')
     });
-
-    if (this.locationId) {
-      this.locationService.getById(this.locationId).subscribe({
-        next:  (loc) => this.locationName.set(loc.name),
-        error: ()    => this.locationName.set('Ubicación no encontrada')
-      });
-    }
 
     this.itemId = this.route.snapshot.paramMap.get('id') ?? '';
     if (this.itemId) {

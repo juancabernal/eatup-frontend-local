@@ -167,3 +167,17 @@
 .modal-actions { display:flex; gap:0.75rem; justify-content:flex-end; }
 .btn-danger-modal { background:#dc2626; color:white; border:none; padding:0.6rem 1.25rem; border-radius:0.5rem; font-weight:600; font-size:0.9rem; cursor:pointer; transition:opacity 0.2s; }
 .btn-danger-modal:hover { opacity:0.85; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading {
+  display: flex; align-items: center; justify-content: center;
+  gap: 0.75rem; color: #94a3b8; padding: 3rem 1rem; font-size: 0.9rem;
+}
+.loading::before {
+  content: ''; width: 22px; height: 22px;
+  border: 2.5px solid #e2e8f0;
+  border-top-color: #ea580c;
+  border-radius: 50%;
+  animation: spin 0.65s linear infinite;
+  flex-shrink: 0;
+}

@@ -3,13 +3,28 @@
     <h1>Descuentos por Cliente</h1>
     <p>Gestión de descuentos asignados a clientes.</p>
   </div>
+  <div class="header-actions">
+  <button class="btn-export" (click)="exportCsv()">⬇ CSV</button>
   <a routerLink="new" class="btn-primary">+ Nueva Asignación</a>
+</div>
 </div>
 
 <div class="stats-row">
   <div class="stat-card">
     <span class="stat-label">Total asignaciones</span>
     <span class="stat-value">{{ items().length }}</span>
+  </div>
+  <div class="stat-card stat-card--active">
+    <span class="stat-label">Vigentes</span>
+    <span class="stat-value">{{ statsVigentes() }}</span>
+  </div>
+  <div class="stat-card stat-card--warn">
+    <span class="stat-label">Por vencer (30d)</span>
+    <span class="stat-value">{{ statsPorVencer() }}</span>
+  </div>
+  <div class="stat-card stat-card--danger">
+    <span class="stat-label">Vencidos</span>
+    <span class="stat-value">{{ statsVencidos() }}</span>
   </div>
 </div>
 
@@ -53,7 +68,47 @@
   <button class="btn-reload-primary" (click)="load()" [disabled]="loading()" title="Recargar lista">↺</button>
 </div>
 
-@if (loading()) { <p class="loading">Cargando asignaciones</p> }
+@if (loading()) {
+  <div class="table-container">
+    <div class="table-scroll">
+      <table>
+        <colgroup>
+          <col style="width:185px">
+          <col style="width:155px">
+          <col style="width:115px">
+          <col style="width:95px">
+          <col style="width:90px">
+          <col style="width:130px">
+          <col style="width:180px">
+        </colgroup>
+        <thead>
+          <tr>
+            <th>Descuento</th>
+            <th>Cliente</th>
+            <th>Ubicación</th>
+            <th>Asignado</th>
+            <th>Inicio</th>
+            <th>Vencimiento</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (i of [1,2,3,4,5]; track i) {
+            <tr class="skeleton-row">
+              <td><div class="sk sk--wide"></div></td>
+              <td><div class="sk sk--mid"></div></td>
+              <td><div class="sk sk--narrow"></div></td>
+              <td><div class="sk sk--narrow"></div></td>
+              <td><div class="sk sk--narrow"></div></td>
+              <td><div class="sk sk--mid"></div></td>
+              <td><div class="sk sk--actions"></div></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+}
 @if (error()) {
   <div class="error-box">
     <strong>Error:</strong> {{ error() }}
@@ -124,7 +179,16 @@
             </td>
           </tr>
         } @empty {
-          <tr><td colspan="7" class="empty">No hay asignaciones registradas.</td></tr>
+          <tr>
+            <td colspan="7">
+              <div class="empty-state">
+                <span class="empty-icon">🔍</span>
+                <p class="empty-title">Sin resultados</p>
+                <p class="empty-sub">No hay asignaciones que coincidan con los filtros.</p>
+                <button class="btn-action" (click)="clearFilters()">✕ Limpiar filtros</button>
+              </div>
+            </td>
+          </tr>
         }
       </tbody>
         </table>

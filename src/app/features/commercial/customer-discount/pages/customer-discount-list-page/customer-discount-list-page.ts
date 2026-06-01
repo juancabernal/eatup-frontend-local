@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, HostListener, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { Subject, EMPTY, forkJoin, of, interval } from 'rxjs';
@@ -43,6 +43,26 @@ export class CustomerDiscountListPage implements OnInit, OnDestroy {
   protected readonly clientMap    = signal<Map<string, string>>(new Map());
   protected readonly locationName = signal('—');
   protected readonly loading      = signal(false);
+
+  protected readonly statsVigentes = computed(() => {
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+  return this.items().filter(i => !i.endDate || new Date(i.endDate) >= hoy).length;
+});
+
+protected readonly statsPorVencer = computed(() => {
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+  const en30 = new Date(hoy); en30.setDate(hoy.getDate() + 30);
+  return this.items().filter(i => {
+    if (!i.endDate) return false;
+    const end = new Date(i.endDate);
+    return end >= hoy && end <= en30;
+  }).length;
+});
+
+protected readonly statsVencidos = computed(() => {
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+  return this.items().filter(i => !!i.endDate && new Date(i.endDate) < hoy).length;
+});
   protected readonly error        = signal('');
   protected readonly currentPage  = signal(1);
   protected readonly pageSize        = signal(5);
@@ -96,13 +116,14 @@ export class CustomerDiscountListPage implements OnInit, OnDestroy {
         );
       }),
       takeUntil(this.destroy$)
-    ).subscribe(data => {
+      ).subscribe(data => {
+      const locId = this.authService.getLocationId();
+      let filtered = locId ? data.filter((i: CustomerDiscount) => i.locationId === locId) : data;
       if (this.excludeId) {
-        this.items.set(data.filter((i: CustomerDiscount) => i.id !== this.excludeId));
+        filtered = filtered.filter((i: CustomerDiscount) => i.id !== this.excludeId);
         this.excludeId = '';
-      } else {
-        this.items.set(data);
       }
+      this.items.set(filtered);
     });
 
     this.load();
@@ -225,9 +246,43 @@ protected readonly filteredItems = computed(() => {
   }
 
   private silentRefresh(): void {
-  this.service.getAll().pipe(
-    catchError(() => EMPTY)
-  ).subscribe(data => this.items.set(data));
+    const locId = this.authService.getLocationId();
+    this.service.getAll().pipe(
+      catchError(() => EMPTY)
+    ).subscribe(data => {
+      const filtered = locId ? data.filter((i: CustomerDiscount) => i.locationId === locId) : data;
+      this.items.set(filtered);
+    });
+  }
+
+  protected exportCsv(): void {
+  const headers = ['Cliente', 'Descuento', 'Ubicación', 'Asignado', 'Inicio', 'Vencimiento'];
+  const rows = this.filteredItems().map(i => [
+    this.clientName(i.customerId),
+    this.discountName(i.discountId),
+    this.locationName(),
+    i.assignedAt ?? '—',
+    i.startDate  ?? '—',
+    i.endDate    ?? '—'
+  ]);
+  const csv = [headers, ...rows]
+    .map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  const hoy = new Date();
+  const fecha = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}-${String(hoy.getDate()).padStart(2,'0')}`;
+  a.download = `descuentos-cliente-${fecha}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  this.showToast('success', 'CSV exportado correctamente.');
+}
+
+@HostListener('document:keydown.escape')
+protected onEscape(): void {
+  if (this.confirmDeleteId()) this.cancelDelete();
 }
 
   ngOnDestroy(): void {

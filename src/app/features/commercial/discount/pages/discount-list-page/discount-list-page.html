@@ -3,7 +3,10 @@
     <h1>Descuentos</h1>
     <p>Gestión y visualización de descuentos registrados.</p>
   </div>
+  <div class="header-actions">
+  <button class="btn-export" (click)="exportCsv()">⬇ CSV</button>
   <a routerLink="new" class="btn-primary">+ Nuevo Descuento</a>
+</div>
 </div>
 
 <div class="stats-row">
@@ -60,7 +63,45 @@
 </div>
 
 @if (loading()) {
-  <p class="loading">Cargando descuentos</p>
+  <div class="table-container">
+    <div class="table-scroll">
+      <table>
+        <colgroup>
+          <col style="width:210px">
+          <col style="width:130px">
+          <col style="width:100px">
+          <col style="width:105px">
+          <col style="width:110px">
+          <col style="width:90px">
+          <col style="width:205px">
+        </colgroup>
+        <thead>
+          <tr>
+            <th>Descripción</th>
+            <th>Categoría</th>
+            <th>Porcentaje</th>
+            <th>Creado</th>
+            <th>Modificado</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (i of [1,2,3,4,5]; track i) {
+            <tr class="skeleton-row">
+              <td><div class="sk sk--wide"></div></td>
+              <td><div class="sk sk--mid"></div></td>
+              <td><div class="sk sk--narrow"></div></td>
+              <td><div class="sk sk--narrow"></div></td>
+              <td><div class="sk sk--narrow"></div></td>
+              <td><div class="sk sk--mid"></div></td>
+              <td><div class="sk sk--actions"></div></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
 }
 
 @if (error()) {
@@ -129,7 +170,14 @@
             </tr>
           } @empty {
             <tr>
-              <td colspan="7" class="empty">No hay descuentos que coincidan.</td>
+              <td colspan="7">
+                <div class="empty-state">
+                  <span class="empty-icon">🔍</span>
+                  <p class="empty-title">Sin resultados</p>
+                  <p class="empty-sub">No hay descuentos que coincidan con los filtros.</p>
+                  <button class="btn-action" (click)="clearFilters()">✕ Limpiar filtros</button>
+                </div>
+              </td>
             </tr>
           }
         </tbody>
