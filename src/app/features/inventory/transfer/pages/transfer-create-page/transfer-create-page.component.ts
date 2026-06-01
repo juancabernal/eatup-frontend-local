@@ -2,15 +2,20 @@ import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { forkJoin } from 'rxjs';
 import { CreateTransferRequest } from '../../models/transfer.model';
 import { TransferService } from '../../services/transfer.service';
 import { TransferReferenceDataService } from '../../services/transfer-reference-data.service';
 import { UserProfileService } from '@features/user/services/user-profile.service';
-import {
-  UserSummaryResponse
-} from '@features/user/models/user-profile.model';
 import { ProductResponse } from '@features/inventory/product/models/product.model';
 import { LocationResponse } from '@features/inventory/location/models/location.model';
+
+interface TransferProductLine {
+  productName: string;
+  quantity: number;
+  stock: number;
+  unitOfMeasure: string;
+}
 
 @Component({
   selector: 'app-transfer-create-page',
@@ -37,7 +42,7 @@ import { LocationResponse } from '@features/inventory/location/models/location.m
               <label for="sedeOrigen">Sede origen</label>
               <div class="locked-field">
                 <span>{{ currentLocationLabel() }}</span>
-                <small>{{ currentLocationId() || 'Cargando sede...' }}</small>
+                <small>Sede autenticada del usuario</small>
               </div>
               <small>Se precarga con la sede autenticada del usuario.</small>
             </div>
@@ -84,21 +89,15 @@ import { LocationResponse } from '@features/inventory/location/models/location.m
 
             <div class="field">
               <label for="responsable">Responsable</label>
-              <select
+              <input
                 id="responsable"
+                type="text"
                 class="input"
                 [(ngModel)]="form.responsable"
                 name="responsable"
                 required
-                [disabled]="loadingContext() || !responsibleUsers().length">
-                <option value="" disabled>Selecciona el responsable</option>
-                @for (user of responsibleUsers(); track user.email) {
-                  <option [value]="responsibleValue(user)">
-                    {{ responsibleLabel(user) }}
-                  </option>
-                }
-              </select>
-              <small>El backend guardara el nombre del usuario seleccionado.</small>
+                placeholder="Digita el nombre del responsable">
+              <small>Digita el nombre de la persona responsable del traslado.</small>
             </div>
 
             <div class="field">
@@ -108,16 +107,15 @@ import { LocationResponse } from '@features/inventory/location/models/location.m
                 class="input"
                 [(ngModel)]="form.producto"
                 name="producto"
-                required
                 [disabled]="loadingContext() || !productOptions().length">
                 <option value="" disabled>Selecciona el producto</option>
                 @for (product of productOptions(); track product.id) {
-                  <option [value]="product.name">
+                  <option [value]="product.id">
                     {{ productLabel(product) }}
                   </option>
                 }
               </select>
-              <small>Se enviara el nombre exacto del producto al backend.</small>
+              <small>Solo se listan productos de la sede origen.</small>
             </div>
 
             <div class="field">
@@ -128,10 +126,41 @@ import { LocationResponse } from '@features/inventory/location/models/location.m
                 class="input"
                 [(ngModel)]="form.cantidad"
                 name="cantidad"
-                min="1"
-                required>
+                min="1">
             </div>
           </div>
+
+          <div class="product-actions">
+            <button
+              class="btn-add"
+              type="button"
+              [disabled]="!canAddProductLine()"
+              (click)="addProductLine()">
+              Agregar producto
+            </button>
+          </div>
+
+          @if (productLines().length) {
+            <div class="product-lines">
+              <div class="product-lines-header">
+                <span>Productos del traslado</span>
+                <strong>{{ productLines().length }}</strong>
+              </div>
+
+              @for (line of productLines(); track line.productName) {
+                <div class="product-line">
+                  <div>
+                    <strong>{{ line.productName }}</strong>
+                    <small>Disponible: {{ line.stock }} {{ line.unitOfMeasure }}</small>
+                  </div>
+                  <span>{{ line.quantity }} {{ line.unitOfMeasure }}</span>
+                  <button type="button" class="btn-remove" (click)="removeProductLine(line.productName)">
+                    Quitar
+                  </button>
+                </div>
+              }
+            </div>
+          }
 
           <div class="field field-full">
             <label for="observaciones">Observaciones</label>
@@ -245,6 +274,55 @@ import { LocationResponse } from '@features/inventory/location/models/location.m
       color: #64748b;
     }
     .textarea { resize: vertical; min-height: 120px; }
+    .product-actions { display: flex; justify-content: flex-start; margin: -0.25rem 0 1rem; }
+    .btn-add {
+      border: 1px solid #fed7aa;
+      border-radius: 0.75rem;
+      background: #fff7ed;
+      color: var(--color-primary);
+      cursor: pointer;
+      font-weight: 800;
+      padding: 0.7rem 1rem;
+    }
+    .btn-add:disabled { opacity: 0.55; cursor: not-allowed; }
+    .product-lines {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      border: 1px solid #e2e8f0;
+      border-radius: 1rem;
+      margin-bottom: 1rem;
+      padding: 1rem;
+      background: #f8fafc;
+    }
+    .product-lines-header {
+      display: flex;
+      justify-content: space-between;
+      color: #334155;
+      font-weight: 800;
+    }
+    .product-line {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      gap: 1rem;
+      align-items: center;
+      border: 1px solid #e2e8f0;
+      border-radius: 0.75rem;
+      background: white;
+      padding: 0.8rem 0.9rem;
+    }
+    .product-line div { display: flex; flex-direction: column; gap: 0.25rem; min-width: 0; }
+    .product-line strong { color: #0f172a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .product-line span { color: #334155; font-weight: 800; }
+    .btn-remove {
+      border: 1px solid #fecaca;
+      border-radius: 0.65rem;
+      background: #fef2f2;
+      color: #b91c1c;
+      cursor: pointer;
+      font-weight: 800;
+      padding: 0.45rem 0.75rem;
+    }
     .action-row { display: flex; gap: 1rem; align-items: center; margin-top: 1rem; }
     .btn-primary, .btn-ghost {
       border-radius: 0.75rem;
@@ -283,8 +361,8 @@ export class TransferCreatePageComponent {
   protected readonly successMessage = signal<string | null>(null);
   protected readonly loadingContext = signal(true);
   protected readonly destinationLocations = signal<LocationResponse[]>([]);
-  protected readonly responsibleUsers = signal<UserSummaryResponse[]>([]);
   protected readonly productOptions = signal<ProductResponse[]>([]);
+  protected readonly productLines = signal<TransferProductLine[]>([]);
   protected readonly currentLocationId = signal<string>('');
   protected readonly currentLocationLabel = signal('Sede autenticada');
 
@@ -310,9 +388,50 @@ export class TransferCreatePageComponent {
       this.form.fechaEnvio &&
       this.form.fechaLlegada &&
       this.form.responsable.trim() &&
-      this.form.producto.trim() &&
-      this.form.cantidad > 0
+      this.productLines().length > 0
     );
+  }
+
+  protected canAddProductLine(): boolean {
+    return !!this.selectedProduct()
+      && this.form.cantidad > 0
+      && this.form.cantidad <= (this.selectedProduct()?.stock ?? 0);
+  }
+
+  protected addProductLine(): void {
+    const product = this.selectedProduct();
+    if (!product || !this.canAddProductLine()) {
+      return;
+    }
+
+    const quantity = Number(this.form.cantidad);
+    this.productLines.update(lines => {
+      const existing = lines.find(line => line.productName === product.name);
+      if (existing) {
+        return lines.map(line =>
+          line.productName === product.name
+            ? { ...line, quantity }
+            : line
+        );
+      }
+
+      return [
+        ...lines,
+        {
+          productName: product.name,
+          quantity,
+          stock: product.stock,
+          unitOfMeasure: product.unitOfMeasure
+        }
+      ];
+    });
+
+    this.form.producto = '';
+    this.form.cantidad = 1;
+  }
+
+  protected removeProductLine(productName: string): void {
+    this.productLines.update(lines => lines.filter(line => line.productName !== productName));
   }
 
   protected submit(): void {
@@ -324,22 +443,35 @@ export class TransferCreatePageComponent {
     this.error.set(null);
     this.successMessage.set(null);
 
-    const payload: CreateTransferRequest = {
+    const basePayload = {
       sedeOrigen: this.currentLocationId() || this.form.sedeOrigen.trim(),
       sedeDestino: this.form.sedeDestino.trim(),
       fechaEnvio: this.toIsoLocal(this.form.fechaEnvio),
       fechaLlegada: this.toIsoLocal(this.form.fechaLlegada),
       responsable: this.form.responsable.trim(),
-      producto: this.form.producto.trim(),
-      cantidad: this.form.cantidad,
       observaciones: this.form.observaciones.trim() || undefined
     };
 
-    this.transferService.create(payload).subscribe({
-      next: transfer => {
+    const requests = this.productLines().map(line => {
+      const payload: CreateTransferRequest = {
+        ...basePayload,
+        producto: line.productName,
+        cantidad: line.quantity
+      };
+      return this.transferService.create(payload);
+    });
+
+    forkJoin(requests).subscribe({
+      next: transfers => {
         this.submitting.set(false);
-        this.successMessage.set(`Traslado #${transfer.idTraslado} creado correctamente.`);
-        setTimeout(() => this.router.navigate(['/inventory/transfer']), 1200);
+        const message = transfers.length === 1
+          ? `Traslado #${transfers[0].idTraslado} creado correctamente.`
+          : `${transfers.length} traslados creados correctamente.`;
+        this.successMessage.set(message);
+        const route = transfers.length === 1
+          ? ['/inventory/transfer', transfers[0].idTraslado]
+          : ['/inventory/transfer'];
+        setTimeout(() => this.router.navigate(route), 1200);
       },
       error: err => {
         this.submitting.set(false);
@@ -360,11 +492,6 @@ export class TransferCreatePageComponent {
       const currentLocationId = profile.editable.locationId || '';
       this.currentLocationId.set(currentLocationId);
       this.form.sedeOrigen = currentLocationId;
-      this.form.responsable = this.buildPersonName(
-        profile.editable.firstName,
-        profile.editable.lastName,
-        profile.editable.email
-      );
       this.currentLocationLabel.set(
         profile.locations.find(location => location.id === currentLocationId)?.name || 'Sede autenticada'
       );
@@ -378,17 +505,10 @@ export class TransferCreatePageComponent {
   }
 
   private async loadReferenceData(locationId: string): Promise<void> {
-    const [responsablesResult, productsResult, locationsResult] = await Promise.allSettled([
-      this.referenceDataService.loadResponsables(),
+    const [productsResult, locationsResult] = await Promise.allSettled([
       this.referenceDataService.loadProductsByLocation(locationId),
       this.referenceDataService.loadSelectableLocations()
     ]);
-
-    if (responsablesResult.status === 'fulfilled') {
-      this.responsibleUsers.set(responsablesResult.value);
-    } else {
-      this.error.set('No se pudo cargar la lista de responsables.');
-    }
 
     if (productsResult.status === 'fulfilled') {
       this.productOptions.set(productsResult.value);
@@ -415,34 +535,15 @@ export class TransferCreatePageComponent {
     }
   }
 
-  protected responsibleValue(user: UserSummaryResponse): string {
-    return this.buildPersonName(user.firstName, user.lastName, user.email);
-  }
-
-  protected responsibleLabel(user: UserSummaryResponse): string {
-    const value = this.responsibleValue(user);
-    return user.email ? `${value} — ${user.email}` : value;
-  }
-
   protected productLabel(product: ProductResponse): string {
     return `${product.name} — ${product.stock} ${product.unitOfMeasure}`;
   }
 
-  protected destinationLabel(location: LocationResponse): string {
-    return `${location.name} - ${location.city}${location.active ? '' : ' (Inactiva)'}`;
+  private selectedProduct(): ProductResponse | undefined {
+    return this.productOptions().find(product => product.id === this.form.producto);
   }
 
-  private buildPersonName(
-    firstName?: string | null,
-    lastName?: string | null,
-    fallback?: string | null
-  ): string {
-    const fullName = [firstName, lastName]
-      .map(value => value?.trim())
-      .filter(Boolean)
-      .join(' ')
-      .trim();
-
-    return fullName || fallback?.trim() || '';
+  protected destinationLabel(location: LocationResponse): string {
+    return `${location.name} - ${location.city}${location.active ? '' : ' (Inactiva)'}`;
   }
 }

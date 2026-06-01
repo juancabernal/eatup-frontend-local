@@ -39,6 +39,10 @@ export class TransferService {
     return this.http.get<TransferResponse[]>(`${this.baseUrl}/incoming`, { params });
   }
 
+  findById(id: number): Observable<TransferResponse> {
+    return this.http.get<TransferResponse>(`${this.baseUrl}/${id}`);
+  }
+
   create(request: CreateTransferRequest): Observable<TransferResponse> {
     return this.http.post<TransferResponse>(this.baseUrl, request);
   }

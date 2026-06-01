@@ -14,5 +14,12 @@ export const TRANSFER_ROUTES: Routes = [
       import('./pages/transfer-create-page/transfer-create-page.component').then(
         m => m.TransferCreatePageComponent
       )
+  },
+  {
+    path: ':id',
+    loadComponent: () =>
+      import('./pages/transfer-detail-page/transfer-detail-page.component').then(
+        m => m.TransferDetailPageComponent
+      )
   }
 ];

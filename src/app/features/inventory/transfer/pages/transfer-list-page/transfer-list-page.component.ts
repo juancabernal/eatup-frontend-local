@@ -7,7 +7,9 @@ import {
   TransferResponse
 } from '../../models/transfer.model';
 import { TransferService } from '../../services/transfer.service';
+import { TransferReferenceDataService } from '../../services/transfer-reference-data.service';
 import { UserProfileService } from '@features/user/services/user-profile.service';
+import { LocationResponse } from '@features/inventory/location/models/location.model';
 import { Observable } from 'rxjs';
 
 @Component({
@@ -38,6 +40,25 @@ import { Observable } from 'rxjs';
             {{ option.label }}
           </button>
         }
+
+        <label class="date-filter" [class.has-value]="selectedDate">
+          <span>Fecha</span>
+          <input
+            type="date"
+            [(ngModel)]="selectedDate"
+            [disabled]="isLoading()"
+            aria-label="Consultar traslados por fecha" />
+        </label>
+
+        @if (selectedDate) {
+          <button
+            type="button"
+            class="filter-chip clear-chip"
+            [disabled]="isLoading()"
+            (click)="clearDateFilter()">
+            Limpiar fecha
+          </button>
+        }
       </div>
 
       @if (bannerMessage()) {
@@ -53,7 +74,7 @@ import { Observable } from 'rxjs';
           <div class="spinner"></div>
           <p>Cargando traslados...</p>
         </div>
-      } @else if (!transfers().length) {
+      } @else if (!filteredTransfers().length) {
         <div class="empty-card">
           <h2>No hay traslados para este filtro</h2>
           <p>Crea un traslado nuevo o cambia de vista para revisar otros estados.</p>
@@ -63,30 +84,26 @@ import { Observable } from 'rxjs';
           <table class="data-table">
             <thead>
               <tr>
-                <th>ID</th>
-                <th>Producto</th>
                 <th>Ruta</th>
-                <th>Fechas</th>
+                <th>Fecha de salida</th>
+                <th>Fecha de llegada</th>
                 <th>Estado</th>
                 <th>Responsable</th>
                 <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
-              @for (transfer of transfers(); track transfer.idTraslado) {
+              @for (transfer of filteredTransfers(); track transfer.idTraslado) {
                 <tr>
-                  <td class="mono">#{{ transfer.idTraslado }}</td>
                   <td>
-                    <div class="primary-cell">{{ transfer.producto }}</div>
-                    <div class="secondary-cell">Cantidad: {{ transfer.cantidad }}</div>
-                  </td>
-                  <td>
-                    <div class="primary-cell">{{ shortLocation(transfer.sedeOrigen) }} -> {{ shortLocation(transfer.sedeDestino) }}</div>
+                    <div class="primary-cell">{{ locationLabel(transfer.sedeOrigen) }} -> {{ locationLabel(transfer.sedeDestino) }}</div>
                     <div class="secondary-cell">{{ roleLabel(transfer) }}</div>
                   </td>
                   <td>
-                    <div class="primary-cell">Sale: {{ transfer.fechaEnvio | date:'dd/MM/yyyy HH:mm' }}</div>
-                    <div class="secondary-cell">Llega: {{ transfer.fechaLlegada | date:'dd/MM/yyyy HH:mm' }}</div>
+                    <div class="primary-cell">{{ transfer.fechaEnvio | date:'dd/MM/yyyy HH:mm' }}</div>
+                  </td>
+                  <td>
+                    <div class="primary-cell">{{ transfer.fechaLlegada | date:'dd/MM/yyyy HH:mm' }}</div>
                   </td>
                   <td>
                     <span class="status-pill" [class]="statusClass(transfer.estado)">
@@ -101,6 +118,8 @@ import { Observable } from 'rxjs';
                   </td>
                   <td>
                     <div class="action-stack">
+                      <a class="btn-view" [routerLink]="[transfer.idTraslado]">Ver</a>
+
                       @if (canSendToTransit(transfer)) {
                         <button
                           class="btn-secondary"
@@ -179,27 +198,73 @@ import { Observable } from 'rxjs';
     .eyebrow { margin: 0 0 0.5rem; text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.75rem; opacity: 0.7; }
     .hero-card h1 { margin: 0; font-size: 2rem; line-height: 1.05; }
     .hero-card p { max-width: 640px; margin: 0.75rem 0 0; color: rgba(255, 255, 255, 0.8); }
-    .filter-bar { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+    .filter-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; }
     .filter-chip {
       border: 1px solid #cbd5e1;
       background: white;
       border-radius: 999px;
-      padding: 0.6rem 1rem;
+      min-height: 44px;
+      padding: 0.55rem 1rem;
       font-weight: 600;
       color: #334155;
       cursor: pointer;
     }
     .filter-chip.active { background: var(--color-secondary); border-color: var(--color-secondary); color: white; }
     .filter-chip:disabled { opacity: 0.55; cursor: not-allowed; }
-    .btn-primary, .btn-secondary, .btn-danger, .btn-success, .btn-warning {
+    .clear-chip { color: #b91c1c; border-color: #fecaca; }
+    .date-filter {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.75rem;
+      min-height: 44px;
+      border: 1px solid #cbd5e1;
+      background: white;
+      border-radius: 999px;
+      padding: 0.35rem 0.65rem 0.35rem 1rem;
+      color: #334155;
+      font-weight: 700;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .date-filter:hover,
+    .date-filter:focus-within {
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px rgba(255,107,53,0.14);
+    }
+    .date-filter.has-value { border-color: #fdba74; background: #fff7ed; }
+    .date-filter span {
+      color: #64748b;
+      font-size: 0.78rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .date-filter input {
+      border: none;
+      color: #0f172a;
+      font: inherit;
+      font-weight: 700;
+      outline: none;
+      background: transparent;
+      min-width: 136px;
+      height: 32px;
+      padding: 0;
+      color-scheme: light;
+    }
+    .date-filter input::-webkit-calendar-picker-indicator {
+      cursor: pointer;
+      opacity: 0.75;
+    }
+    .date-filter:has(input:disabled) { opacity: 0.55; }
+    .btn-primary, .btn-secondary, .btn-danger, .btn-success, .btn-warning, .btn-view {
       border: none;
       border-radius: 0.7rem;
       padding: 0.65rem 1rem;
       font-weight: 700;
       cursor: pointer;
       text-decoration: none;
+      text-align: center;
     }
     .btn-primary { background: var(--color-primary); color: white; box-shadow: 0 2px 8px rgba(234, 88, 12, 0.25); }
+    .btn-view { background: #f8fafc; color: #334155; border: 1px solid #cbd5e1; }
     .btn-secondary { background: #fff7ed; color: var(--color-primary); border: 1px solid #fed7aa; }
     .btn-danger { background: #fee2e2; color: #b91c1c; }
     .btn-success { background: rgba(46, 196, 182, 0.16); color: #0f766e; }
@@ -281,12 +346,14 @@ import { Observable } from 'rxjs';
 export class TransferListPageComponent implements OnInit {
   private readonly transferService = inject(TransferService);
   private readonly userProfileService = inject(UserProfileService);
+  private readonly referenceDataService = inject(TransferReferenceDataService);
 
   protected readonly locationId = signal<string | null>(null);
   protected readonly loadingContext = signal(true);
   protected readonly filters: Array<{ label: string; value: TransferListFilter }> = [
     { label: 'Todos', value: 'TODOS' },
     { label: 'Entrantes', value: 'ENTRANTES' },
+    { label: 'Salientes', value: 'SALIENTES' },
     { label: 'En transito', value: 'EN_TRANSITO' },
     { label: 'Completados', value: 'COMPLETADOS' },
     { label: 'Cancelados', value: 'CANCELADOS' },
@@ -294,16 +361,19 @@ export class TransferListPageComponent implements OnInit {
   ];
 
   protected readonly transfers = signal<TransferResponse[]>([]);
+  protected readonly locations = signal<LocationResponse[]>([]);
   protected readonly isLoading = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly bannerMessage = signal<string | null>(null);
   protected readonly selectedFilter = signal<TransferListFilter>('TODOS');
   protected readonly processingId = signal<number | null>(null);
   protected readonly openClaimId = signal<number | null>(null);
+  protected selectedDate = '';
   protected claimText = '';
 
   async ngOnInit(): Promise<void> {
     await this.loadCurrentLocation();
+    await this.loadLocations();
     if (this.locationId()) {
       this.loadTransfers('TODOS');
     }
@@ -324,6 +394,9 @@ export class TransferListPageComponent implements OnInit {
       case 'ENTRANTES':
         request$ = this.transferService.getIncoming(currentLocationId);
         break;
+      case 'SALIENTES':
+        request$ = this.transferService.getAll();
+        break;
       case 'EN_TRANSITO':
         request$ = this.transferService.getInTransit();
         break;
@@ -343,7 +416,7 @@ export class TransferListPageComponent implements OnInit {
 
     request$.subscribe({
       next: transfers => {
-        this.transfers.set(transfers);
+        this.transfers.set(this.applyLocationFilter(transfers, filter, currentLocationId));
         this.isLoading.set(false);
       },
       error: err => {
@@ -352,6 +425,34 @@ export class TransferListPageComponent implements OnInit {
         this.isLoading.set(false);
       }
     });
+  }
+
+  protected clearDateFilter(): void {
+    this.selectedDate = '';
+  }
+
+  protected filteredTransfers(): TransferResponse[] {
+    const selectedDate = this.selectedDate;
+    if (!selectedDate) {
+      return this.transfers();
+    }
+
+    return this.transfers().filter(transfer =>
+      this.isSameDate(transfer.fechaEnvio, selectedDate)
+      || this.isSameDate(transfer.fechaLlegada, selectedDate)
+    );
+  }
+
+  private applyLocationFilter(
+    transfers: TransferResponse[],
+    filter: TransferListFilter,
+    currentLocationId: string
+  ): TransferResponse[] {
+    if (filter === 'SALIENTES') {
+      return transfers.filter(transfer => transfer.sedeOrigen === currentLocationId);
+    }
+
+    return transfers;
   }
 
   protected canSendToTransit(transfer: TransferResponse): boolean {
@@ -435,8 +536,9 @@ export class TransferListPageComponent implements OnInit {
     );
   }
 
-  protected shortLocation(location: string): string {
-    return location.slice(0, 8);
+  protected locationLabel(locationId: string): string {
+    const location = this.locations().find(item => item.id === locationId);
+    return location ? `${location.name} - ${location.city}` : locationId.slice(0, 8);
   }
 
   protected roleLabel(transfer: TransferResponse): string {
@@ -452,6 +554,23 @@ export class TransferListPageComponent implements OnInit {
 
   protected statusClass(status: TransferResponse['estado']): string {
     return `status-${status.toLowerCase().replace('_', '-')}`;
+  }
+
+  private isSameDate(value: string | null | undefined, selectedDate: string): boolean {
+    if (!value) {
+      return false;
+    }
+
+    if (value.slice(0, 10) === selectedDate) {
+      return true;
+    }
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return false;
+    }
+
+    return date.toISOString().slice(0, 10) === selectedDate;
   }
 
   private runAction(
@@ -489,6 +608,14 @@ export class TransferListPageComponent implements OnInit {
       this.error.set('No se pudo cargar la sede del usuario autenticado.');
     } finally {
       this.loadingContext.set(false);
+    }
+  }
+
+  private async loadLocations(): Promise<void> {
+    try {
+      this.locations.set(await this.referenceDataService.loadSelectableLocations());
+    } catch {
+      this.locations.set([]);
     }
   }
 }
