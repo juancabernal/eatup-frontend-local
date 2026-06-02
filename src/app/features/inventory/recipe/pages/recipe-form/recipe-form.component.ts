@@ -1,4 +1,4 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CustomSelectComponent, SelectOption } from '../../components/custom-select/custom-select.component';
@@ -8,6 +8,7 @@ import { RecipeProductItem, RecipeRequest, RecipeResponse, RecipeSubRecipeItem }
 import { RecipeProductService } from '../../services/product.service';
 import { CategoryService, CategoryDTO } from '../../services/category.service';
 import { ENV } from '@config/env.config';
+import { AuthService } from '@features/user/services/auth.service';
 
 interface ProductOption {
   id: string;
@@ -99,6 +100,7 @@ export class RecipeFormComponent implements OnInit {
   productListError = '';
 
   private readonly NAME_REGEX = /^[a-zA-Z0-9ÁÉÍÓÚáéíóúñÑ ]+$/;
+  private readonly authService = inject(AuthService);
 
   constructor(
     private recipeService: RecipeService,
@@ -123,7 +125,7 @@ export class RecipeFormComponent implements OnInit {
 
   private loadProducts(): void {
     this.productsLoading.set(true);
-    this.productService.getByLocation(ENV.locationId).subscribe({
+    this.productService.getByLocation(this.authService.getLocationId() || ENV.locationId).subscribe({
       next: page => {
         this.availableProducts = page.content.map(p => ({
           id: p.id,

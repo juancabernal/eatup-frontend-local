@@ -4,6 +4,7 @@ import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { ProductService } from '../../services/product.service';
+import { AuthService } from '@features/user/services/auth.service';
 
 @Component({
   selector: 'app-product-create-page',
@@ -110,6 +111,8 @@ export class ProductCreatePageComponent implements OnInit {
   private readonly productService = inject(ProductService);
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
+  private readonly authService = inject(AuthService);
+
 
   loading = signal(false);
   error = signal<string | null>(null);
@@ -140,8 +143,16 @@ export class ProductCreatePageComponent implements OnInit {
   }
 
   loadData() {
+    const locationId = this.authService.getLocationId();
     this.http.get<any[]>('/inventory/api/v1/categories').subscribe(data => this.categories.set(data));
-    this.http.get<any[]>('/inventory/api/v1/location').subscribe(data => this.locations.set(data));
+    this.http.get<any[]>('/inventory/api/v1/location').subscribe(data => {
+      const scopedLocations = locationId ? data.filter(location => location.id === locationId) : data;
+      this.locations.set(scopedLocations);
+      if (locationId) {
+        this.productForm.patchValue({ locationId });
+        this.productForm.get('locationId')?.disable();
+      }
+    });
   }
 
   isInvalid(field: string): boolean {
@@ -157,7 +168,10 @@ export class ProductCreatePageComponent implements OnInit {
     this.error.set(null);
 
     // getRawValue incluye el campo deshabilitado (startDate)
-    const payload = this.productForm.getRawValue();
+    const payload = {
+      ...this.productForm.getRawValue(),
+      locationId: this.authService.getLocationId() || this.productForm.getRawValue().locationId
+    };
 
     this.productService.create(payload as any).subscribe({
       next: () => this.router.navigate(['/inventory/product']),

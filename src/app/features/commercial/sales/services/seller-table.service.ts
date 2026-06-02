@@ -15,9 +15,11 @@ export class SellerTableService {
   }
 
   getSellers(): Observable<Seller[]> {
+    const locationId = this.env.locationId;
+    const locationParam = locationId ? `&locationId=${encodeURIComponent(locationId)}` : '';
     const endpoints = [
-      `${this.apiRoot}/comercialapi/v1/sellers?status=ACTIVE`,
-      `${this.apiRoot}/comercialapi/v1/sellers`,
+      `${this.apiRoot}/comercialapi/v1/sellers?status=ACTIVE${locationParam}`,
+      `${this.apiRoot}/comercialapi/v1/sellers${locationId ? `?locationId=${encodeURIComponent(locationId)}` : ''}`,
       `${this.env.apiUrl}/sellers`
     ];
     return this.tryEndpoints<Seller>(endpoints, 'seller');

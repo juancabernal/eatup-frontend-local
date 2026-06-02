@@ -9,4 +9,8 @@ export interface LoginResponse {
   jwt?: string;
   tokenType?: string;
   expiresInSeconds?: number;
+  locationId?: string;
+  user?: {
+    locationId?: string;
+  };
 }

@@ -22,6 +22,20 @@ export class ProductService {
     return this.http.get<any>(this.baseUrl, { params });
   }
 
+  findByLocation(locationId: string, page: number = 0, size: number = 10, name?: string): Observable<any> {
+    let params = new HttpParams()
+      .set('locationId', locationId)
+      .set('page', page.toString())
+      .set('size', size.toString());
+
+    if (name) {
+      params = params.set('name', name);
+    }
+
+    return this.http.get<any>(`${this.baseUrl}/location/${locationId}`, { params });
+  }
+
+
   findById(id: string): Observable<ProductResponse> {
     return this.http.get<ProductResponse>(`${this.baseUrl}/${id}`);
   }

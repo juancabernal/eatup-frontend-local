@@ -1,10 +1,11 @@
-import { Component, OnDestroy, OnInit, computed, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { interval, Subject, takeUntil } from 'rxjs';
 import { PurchaseService } from '../../services/purchase.service';
 import { ENV } from '@config/env.config';
+import { AuthService } from '@features/user/services/auth.service';
 import {
   PurchaseResponse,
   PurchaseStatus,
@@ -209,7 +210,10 @@ export class PurchaseListComponent implements OnInit, OnDestroy {
 
   today = new Date().toISOString().split('T')[0];
 
-  private locationId = ENV.locationId;
+  private readonly authService = inject(AuthService);
+  private get locationId(): string {
+    return this.authService.getLocationId() || ENV.locationId;
+  }
   private destroy$ = new Subject<void>();
 
   constructor(

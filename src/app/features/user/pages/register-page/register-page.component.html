@@ -185,14 +185,22 @@
 
         <label>
           Sede
-          <select name="locationId" [(ngModel)]="model.locationId" required #locationId="ngModel">
-            <option value="">Selecciona...</option>
+          <select
+            name="locationId"
+            [(ngModel)]="model.locationId"
+            required
+            #locationId="ngModel"
+            [disabled]="locations().length === 0"
+            >
+            <option value="">Selecciona una sede activa...</option>
             @for (location of locations(); track location.id) {
               <option [value]="location.id">{{ location.name }}</option>
             }
           </select>
-          @if (locationId.invalid && (locationId.dirty || locationId.touched)) {
-            <span class="field-error">Selecciona una sede.</span>
+          @if (locations().length === 0) {
+            <span class="field-error">No hay sedes activas disponibles.</span>
+          } @else if (locationId.invalid && (locationId.dirty || locationId.touched)) {
+            <span class="field-error">Selecciona una sede activa.</span>
           }
         </label>
 
@@ -214,7 +222,7 @@
 
         <div class="actions field-full">
           <a class="btn-link" [routerLink]="['/login']">Volver al login</a>
-          <button type="submit" class="btn-submit" [disabled]="loading() || loadingCatalogs() || registerForm.invalid">
+          <button type="submit" class="btn-submit" [disabled]="loading() || loadingCatalogs() || locations().length === 0 || registerForm.invalid">
             @if (loading()) {
               Registrando...
             } @else {

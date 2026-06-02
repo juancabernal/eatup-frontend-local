@@ -53,6 +53,7 @@ export class UserProfileService {
 
     const cityId = this.findCityIdByName(detail.city, cities);
     const locationId = this.resolveLocationId(detail.location, summary.location, locations);
+    this.authService.setLocationId(locationId);
 
     const editable: UserEditModel = {
       firstName: detail.firstName ?? summary.firstName ?? '',

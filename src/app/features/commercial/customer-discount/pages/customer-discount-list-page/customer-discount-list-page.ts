@@ -9,6 +9,7 @@ import { DiscountService } from '@commercial/discount/services/discount';
 import { ClientService } from '@commercial/customer-discount/services/client';
 import { LocationService } from '@commercial/customer-discount/services/location';
 import { ENV } from '@config/env.config';
+import { AuthService } from '@features/user/services/auth.service';
 import { FormsModule } from '@angular/forms';
 import { CustomerDiscountFilterPipe } from '@commercial/customer-discount/pipes/customer-discount-filter.pipe';
 import { CustomerDiscountExpiryBadgeComponent } from '@commercial/customer-discount/components/customer-discount-expiry-badge/customer-discount-expiry-badge';
@@ -26,6 +27,7 @@ interface Toast { id: string; type: 'success' | 'error'; message: string; }
 })
 
 export class CustomerDiscountListPage implements OnInit, OnDestroy {
+  private readonly authService = inject(AuthService);
   private readonly service         = inject(CustomerDiscountService);
   private readonly discountService = inject(DiscountService);
   private readonly clientService   = inject(ClientService);
@@ -58,7 +60,7 @@ export class CustomerDiscountListPage implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.excludeId = history.state?.deletedId ?? '';
 
-    const locId = ENV.locationId;
+    const locId = this.authService.getLocationId() || ENV.locationId;
     forkJoin([
 
       this.discountService.getAll(),

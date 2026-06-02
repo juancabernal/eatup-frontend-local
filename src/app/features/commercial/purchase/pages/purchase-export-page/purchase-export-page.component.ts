@@ -1,9 +1,10 @@
-import { Component, OnInit, signal, computed } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { ENV } from '@config/env.config';
+import { AuthService } from '@features/user/services/auth.service';
 import { ProviderService, ProviderDTO } from '../../services/provider.service';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 
@@ -270,7 +271,10 @@ export class PurchaseExportPageComponent implements OnInit {
       .includes(this.exportStatus())
   );
 
-  private locationId = ENV.locationId;
+  private readonly authService = inject(AuthService);
+  private get locationId(): string {
+    return this.authService.getLocationId() || ENV.locationId;
+  }
   private previewTimer: any = null;
 
   constructor(

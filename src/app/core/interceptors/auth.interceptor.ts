@@ -11,7 +11,8 @@ const PUBLIC_CATALOG_ENDPOINTS = [
   '/userapi/v1/document-types',
   '/userapi/v1/departments',
   '/userapi/v1/cities',
-  '/inventory/api/v1/location/active'
+  '/inventory/api/v1/location/active',
+  '/inventory/api/v1/location'
 ];
 
 function isPublicRequest(url: string, method: string): boolean {
@@ -30,37 +31,37 @@ function isPublicRequest(url: string, method: string): boolean {
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const router = inject(Router);
   const authService = inject(AuthService);
+  const token = authService.getToken();
   const publicRequest = isPublicRequest(req.url, req.method);
 
+  console.log('>>> INTERCEPTOR', req.url, '| token:', !!token, '| public:', publicRequest);
+
+  // Si hay token, siempre adjuntarlo (incluso en rutas públicas)
+  if (token) {
+    const requestWithAuth = req.clone({
+      withCredentials: true,
+      setHeaders: { Authorization: `Bearer ${token}` }
+    });
+    return next(requestWithAuth).pipe(
+      catchError((error: HttpErrorResponse) => {
+        if (error.status === 401 && !authService.hasValidSession()) {
+          authService.logout();
+          void router.navigate(['/login']);
+        }
+        return throwError(() => error);
+      })
+    );
+  }
+
+  // Sin token: solo permitir rutas públicas
   if (publicRequest) {
-    return next(req);
+    return next(req.clone({ withCredentials: false }));
   }
 
-  const token = authService.getToken();
-
-  if (!token) {
-    void router.navigate(['/login']);
-    return throwError(() => new HttpErrorResponse({
-      status: 401,
-      statusText: 'No authentication token',
-      url: req.url
-    }));
-  }
-
-  const requestWithAuth = req.clone({
-    setHeaders: {
-      Authorization: `Bearer ${token}`
-    }
-  });
-
-  return next(requestWithAuth).pipe(
-    catchError((error: HttpErrorResponse) => {
-      if (error.status === 401 && !authService.hasValidSession()) {
-        authService.logout();
-        void router.navigate(['/login']);
-      }
-
-      return throwError(() => error);
-    })
-  );
+  void router.navigate(['/login']);
+  return throwError(() => new HttpErrorResponse({
+    status: 401,
+    statusText: 'No authentication token',
+    url: req.url
+  }));
 };

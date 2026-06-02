@@ -9,6 +9,7 @@ import { CustomerDiscount } from '@commercial/customer-discount/models/customer-
 import { DiscountService } from '@commercial/discount/services/discount';
 import { Discount } from '@commercial/discount/models/discount.model';
 import { ENV } from '@config/env.config';
+import { AuthService } from '@features/user/services/auth.service';
 import { CustomerDiscountRefreshService } from '@commercial/customer-discount/services/customer-discount-refresh.service';
 
 function dateRangeValidator(group: AbstractControl): ValidationErrors | null {
@@ -30,6 +31,7 @@ function dateRangeValidator(group: AbstractControl): ValidationErrors | null {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class CustomerDiscountFormPage implements OnInit {
+  private readonly authService = inject(AuthService);
   private readonly service         = inject(CustomerDiscountService);
   private readonly discountService = inject(DiscountService);
   private readonly router          = inject(Router);
@@ -46,7 +48,7 @@ export class CustomerDiscountFormPage implements OnInit {
   protected readonly generalError = signal('');
   protected readonly formSubmitted = signal(false);
 
-  readonly locationId = ENV.locationId ?? '';
+  readonly locationId = this.authService.getLocationId() || ENV.locationId || '';
   readonly today = (() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;

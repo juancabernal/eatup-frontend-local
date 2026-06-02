@@ -819,8 +819,14 @@ export class SalesPageComponent implements OnInit {
     const term = this.saleSearchTerm.trim().toLowerCase();
     const fromDate = this.saleDateFrom ? new Date(`${this.saleDateFrom}T00:00:00`).getTime() : null;
     const toDate = this.saleDateTo ? new Date(`${this.saleDateTo}T23:59:59.999`).getTime() : null;
+    const currentLocationId = this.getLocationId();
 
     this.filteredSales = this.sales.filter(sale => {
+
+      if (currentLocationId && sale.locationId && sale.locationId !== currentLocationId) {
+        return false;
+      }
+
       const saleCode = this.saleLabel(sale.id).replace('#', '').toLowerCase();
       const saleDate = new Date(sale.createdDate || sale.modifiedDate || 0).getTime();
       const total = sale.totalAmount || 0;

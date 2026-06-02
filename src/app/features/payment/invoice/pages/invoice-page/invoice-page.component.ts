@@ -13,6 +13,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ENV } from '../../../../../core/config/env.config';
+import { AuthService } from '@features/user/services/auth.service';
 import {
   Discount,
   SaleDetailResponse,
@@ -91,11 +92,12 @@ export class InvoicePageComponent implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
   private readonly invoiceService = inject(InvoiceService);
+  private readonly authService = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly invoicePageSize = 100;
 
   protected readonly noDiscountValue = NO_DISCOUNT_VALUE;
-  protected readonly locationIdFromEnv = ENV.locationId?.trim() ?? '';
+  protected readonly locationIdFromEnv = this.authService.getLocationId() || ENV.locationId?.trim() || '';
   protected readonly customerServiceDetected = false;
   protected readonly sales = signal<SaleResponse[]>([]);
   protected readonly discounts = signal<Discount[]>([]);

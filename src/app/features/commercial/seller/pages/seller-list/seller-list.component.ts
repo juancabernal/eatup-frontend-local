@@ -4,6 +4,7 @@ import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Va
 import { Observable, finalize, switchMap } from 'rxjs';
 
 import { ENV } from '@config/env.config';
+import { AuthService } from '@features/user/services/auth.service';
 import {
   CreateSellerRequest,
   DocumentTypeOption,
@@ -52,6 +53,7 @@ interface SellerToast {
 })
 export class SellerListComponent implements OnInit, OnDestroy {
   private readonly sellerService = inject(SellerService);
+    private readonly authService = inject(AuthService);
   private readonly fb = new FormBuilder().nonNullable;
   private readonly sellerStatuses: readonly SellerStatus[] = ['ACTIVE', 'INACTIVE'];
   private readonly lettersPattern = /^[\p{L}\s]+$/u;
@@ -119,7 +121,7 @@ export class SellerListComponent implements OnInit, OnDestroy {
 
   protected readonly form = this.fb.group({
     documentTypeId: ['', Validators.required],
-    locationId: [ENV.locationId, Validators.required],
+    locationId: [this.currentLocationId(), Validators.required],
     identificationNumber: ['', [Validators.required, Validators.pattern(/^\d{6,20}$/)]],
     firstName: ['', [Validators.required, Validators.maxLength(100), Validators.pattern(this.lettersPattern)]],
     lastName: ['', [Validators.required, Validators.maxLength(100), Validators.pattern(this.lettersPattern)]],
@@ -151,7 +153,7 @@ export class SellerListComponent implements OnInit, OnDestroy {
     this.form.controls.email.enable();
     this.form.reset({
       documentTypeId: '',
-      locationId: ENV.locationId,
+      locationId: this.currentLocationId(),
       identificationNumber: '',
       firstName: '',
       lastName: '',
@@ -169,7 +171,7 @@ export class SellerListComponent implements OnInit, OnDestroy {
     this.formSubmitted.set(false);
     this.form.reset({
       documentTypeId: seller.documentTypeId ?? '',
-      locationId: seller.locationId || ENV.locationId,
+      locationId: seller.locationId || this.currentLocationId(),
       identificationNumber: seller.identificationNumber ?? '',
       firstName: seller.firstName ?? '',
       lastName: seller.lastName ?? '',
@@ -344,7 +346,7 @@ export class SellerListComponent implements OnInit, OnDestroy {
 
     this.sellerService.getSellers().subscribe({
       next: (sellers) => {
-        this.sellers.set(sellers);
+        this.sellers.set(this.scopeByLocation(sellers));
         this.loading.set(false);
         if (options.successMessage) {
           this.showToast('success', options.successMessage);
@@ -405,6 +407,16 @@ export class SellerListComponent implements OnInit, OnDestroy {
   private statusValidator(control: AbstractControl): ValidationErrors | null {
     return this.sellerStatuses.includes(control.value as SellerStatus) ? null : { sellerStatus: true };
   }
+
+    private currentLocationId(): string {
+    return this.authService.getLocationId() || ENV.locationId;
+  }
+
+  private scopeByLocation(sellers: Seller[]): Seller[] {
+    const locationId = this.currentLocationId();
+    return locationId ? sellers.filter(seller => seller.locationId === locationId) : sellers;
+  }
+
 
   private normalize(value: string | undefined | null): string {
     return (value ?? '').toLowerCase().trim();

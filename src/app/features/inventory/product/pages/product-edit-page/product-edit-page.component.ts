@@ -4,6 +4,7 @@ import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { ProductService } from '../../services/product.service';
+import { AuthService } from '@features/user/services/auth.service';
 
 @Component({
   selector: 'app-product-edit-page',
@@ -101,6 +102,7 @@ export class ProductEditPageComponent implements OnInit {
   private http = inject(HttpClient);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
+  private authService = inject(AuthService);
 
   loading = signal(false);
   categories = signal<any[]>([]);
@@ -140,7 +142,15 @@ export class ProductEditPageComponent implements OnInit {
   }
 
   loadLocations() {
-    this.http.get<any[]>('/inventory/api/v1/location').subscribe(data => this.locations.set(data));
+    const locationId = this.authService.getLocationId();
+    this.http.get<any[]>('/inventory/api/v1/location').subscribe(data => {
+      const scopedLocations = locationId ? data.filter(location => location.id === locationId) : data;
+      this.locations.set(scopedLocations);
+      if (locationId) {
+        this.form.patchValue({ locationId });
+        this.form.get('locationId')?.disable();
+      }
+    });
   }
 
   validateSelects() {
@@ -168,7 +178,8 @@ export class ProductEditPageComponent implements OnInit {
     
     this.loading.set(true);
     const id = this.route.snapshot.paramMap.get('id')!;
-    this.productService.update(id, this.form.value as any).subscribe({
+    this.productService.update(id, { ...this.form.getRawValue(), locationId: this.authService.getLocationId() ||
+      this.form.getRawValue().locationId } as any).subscribe({
       next: () => this.router.navigate(['/inventory/product']),
       error: (err) => {
         this.loading.set(false);

@@ -7,6 +7,7 @@ import { CustomerDiscountService } from '@commercial/customer-discount/services/
 import { CustomerDiscount } from '@commercial/customer-discount/models/customer-discount.model';
 import { DiscountService } from '@commercial/discount/services/discount';
 import { ENV } from '@config/env.config';
+import { AuthService } from '@features/user/services/auth.service';
 
 @Component({
   selector: 'app-customer-discount-detail-page',
@@ -17,6 +18,7 @@ import { ENV } from '@config/env.config';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class CustomerDiscountDetailPage implements OnInit {
+  private readonly authService = inject(AuthService);
   private readonly service         = inject(CustomerDiscountService);
   private readonly discountService = inject(DiscountService);
   private readonly clientService   = inject(ClientService);
@@ -61,7 +63,7 @@ export class CustomerDiscountDetailPage implements OnInit {
       }
     });
 
-    const locId = ENV.locationId;
+    const locId = this.authService.getLocationId() || ENV.locationId;
     if (locId) {
       this.locationService.getById(locId).subscribe({
         next:  (loc) => this.locationName.set(loc.name),

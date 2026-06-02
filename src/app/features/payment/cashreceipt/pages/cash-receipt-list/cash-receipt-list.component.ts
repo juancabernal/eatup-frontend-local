@@ -6,6 +6,7 @@ import { CashReceiptResponse, PageResponse, InvoiceResponse } from '@payment/cas
 import { PaymentMethodResponse } from '@payment/paymentmethod/models/payment-method.model';
 import { HttpClient } from '@angular/common/http';
 import { ENV } from '@config/env.config';
+import { AuthService } from '@features/user/services/auth.service';
 
 @Component({
   selector: 'app-cash-receipt-list',
@@ -259,7 +260,8 @@ export class CashReceiptListComponent implements OnInit {
   private readonly invoiceCache = new Map<string, string>();
   private readonly methodCache = new Map<string, string>();
 
-  private readonly locationId = ENV.locationId;
+  private readonly authService = inject(AuthService);
+  private readonly locationId = this.authService.getLocationId() || ENV.locationId;
 
   ngOnInit(): void {
     this.load(0);

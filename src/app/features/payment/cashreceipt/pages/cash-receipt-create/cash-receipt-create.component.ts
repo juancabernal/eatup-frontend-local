@@ -7,6 +7,7 @@ import { PaymentMethodService } from '@payment/paymentmethod/services/payment-me
 import { CreateCashReceiptRequest } from '@payment/cashreceipt/models/cashreceipt.model';
 import { PaymentMethodResponse } from '@payment/paymentmethod/models/payment-method.model';
 import { ENV } from '@config/env.config';
+import { AuthService } from '@features/user/services/auth.service';
 
 @Component({
   selector: 'app-cash-receipt-create',
@@ -149,7 +150,8 @@ export class CashReceiptCreateComponent implements OnInit {
   protected readonly submitError = signal<string | null>(null);
   protected readonly successMsg = signal<string | null>(null);
 
-  private readonly locationId = ENV.locationId;
+  private readonly authService = inject(AuthService);
+  private readonly locationId = this.authService.getLocationId() || ENV.locationId;
 
   ngOnInit(): void {
     this.loadPaymentMethods();

@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -12,6 +12,7 @@ import {
   PurchaseResponse
 } from '../../models/purchase.model';
 import { ENV } from '@config/env.config';
+import { AuthService } from '@features/user/services/auth.service';
 
 @Component({
   selector: 'app-purchase-form-page',
@@ -223,7 +224,10 @@ export class PurchaseFormPageComponent implements OnInit, OnDestroy {
   };
 
   private readonly DRAFT_KEY = 'purchase_form_draft';
-  private locationId = ENV.locationId;
+  private readonly authService = inject(AuthService);
+  private get locationId(): string {
+    return this.authService.getLocationId() || ENV.locationId;
+  }
   private destroy$ = new Subject<void>();
 
   constructor(

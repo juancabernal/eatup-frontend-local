@@ -6,6 +6,7 @@ import { TableDTO, TableFilters, TableReservationDTO, TableSessionDTO, TableSumm
 import { TableNotificationService } from '../services/table-notification.service';
 import { TableService } from '../services/table.service';
 import { DEFAULT_TABLE_VENUE_ID } from '../utils/table.constants';
+import { AuthService } from '@features/user/services/auth.service';
 
 const DEFAULT_FILTERS: TableFilters = {
   search: '',
@@ -19,6 +20,7 @@ const DEFAULT_FILTERS: TableFilters = {
 export class TablesStore {
   private readonly tableService = inject(TableService);
   private readonly notifications = inject(TableNotificationService);
+  private readonly authService = inject(AuthService);
 
   readonly loading = signal(false);
   readonly saving = signal(false);
@@ -26,7 +28,7 @@ export class TablesStore {
   readonly sessions = signal<TableSessionDTO[]>([]);
   readonly reservations = signal<TableReservationDTO[]>([]);
   readonly summary = signal<TableSummaryDTO | null>(null);
-  readonly filters = signal<TableFilters>({ ...DEFAULT_FILTERS });
+  readonly filters = signal<TableFilters>({ ...DEFAULT_FILTERS, venueId: this.currentVenueId() });
 
   readonly filteredTables = computed(() => {
     const filters = this.filters();
@@ -47,7 +49,7 @@ export class TablesStore {
   readonly activeSessions = computed(() => this.sessions().filter((session) => !session.closedAt));
   readonly activeReservations = computed(() => this.reservations());
 
-  loadDashboard(venueId = DEFAULT_TABLE_VENUE_ID): void {
+  loadDashboard(venueId = this.currentVenueId()): void {
     this.loading.set(true);
     const summaryRequest = venueId ? this.tableService.getSummaryByVenue(venueId) : this.tableService.getSummary();
 
@@ -109,7 +111,7 @@ export class TablesStore {
   }
 
   resetFilters(): void {
-    this.filters.set({ ...DEFAULT_FILTERS });
+    this.filters.set({ ...DEFAULT_FILTERS, venueId: this.currentVenueId() });
     this.loadTables();
   }
 
@@ -203,7 +205,7 @@ export class TablesStore {
     operation.pipe(finalize(() => this.saving.set(false))).subscribe({
       next: () => {
         this.notifications.success(reservation.id ? 'Reserva actualizada' : 'Reserva creada');
-        this.loadDashboard(DEFAULT_TABLE_VENUE_ID);
+        this.loadDashboard(this.currentVenueId());
       },
       error: (err) => this.notifications.error(this.getErrorMessage(err, 'No se pudo guardar la reserva')),
     });
@@ -233,7 +235,7 @@ seatReservation(reservation: TableReservationDTO): void {
   this.tableService.seatReservation(reservation.id, { guestCount: reservation.guestCount ?? 1 }).subscribe({
     next: () => {
       this.notifications.success('Reserva sentada');
-      this.loadDashboard(DEFAULT_TABLE_VENUE_ID);
+      this.loadDashboard(this.currentVenueId());
     },
     error: (err) => this.notifications.error(this.getErrorMessage(err, 'No se pudo sentar la reserva')),
   });
@@ -243,6 +245,11 @@ seatReservation(reservation: TableReservationDTO): void {
     const err = error as any;
     return err?.backendMessage ?? fallback;
   }
+
+    private currentVenueId(): string {
+    return this.authService.getLocationId() || DEFAULT_TABLE_VENUE_ID;
+  }
+
 
   private patchSummaryActivityCounts(): void {
     this.summary.update((summary) =>

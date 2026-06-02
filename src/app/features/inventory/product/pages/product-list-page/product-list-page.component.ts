@@ -7,6 +7,7 @@ import { Product } from '../../models/product.model';
 import { HttpClient } from '@angular/common/http';
 import { of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
+import { AuthService } from '@features/user/services/auth.service';
 
 const STOCK_SNAPSHOT_KEY = 'product_stock_snapshot';
 
@@ -249,6 +250,7 @@ export class ProductListPageComponent implements OnInit {
   private readonly productService = inject(ProductService);
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
+  private readonly authService = inject(AuthService);
 
   products = signal<Product[]>([]);
   filter = signal<'TODOS' | 'BAJO_STOCK'>('TODOS');
@@ -278,7 +280,12 @@ export class ProductListPageComponent implements OnInit {
   }
 
   loadProducts(): void {
-    this.productService.findAll(0, 50, this.searchName).subscribe({
+    const locationId = this.authService.getLocationId();
+    const request$ = locationId
+      ? this.productService.findByLocation(locationId, 0, 50, this.searchName)
+      : this.productService.findAll(0, 50, this.searchName);
+
+    request$.subscribe({
       next: (res: any) => {
         const data: Product[] = res.content || [];
         this.detectStockChanges(data);

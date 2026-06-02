@@ -1,8 +1,9 @@
-import { Component, computed, input, output } from '@angular/core';
+import { Component, computed, inject, input, output } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 
 import { TableDTO } from '../models/table.models';
 import { DEFAULT_TABLE_VENUE_ID } from '../utils/table.constants';
+import { AuthService } from '@features/user/services/auth.service';
 
 @Component({
   selector: 'eatup-table-form-dialog',
@@ -63,6 +64,7 @@ import { DEFAULT_TABLE_VENUE_ID } from '../utils/table.constants';
 })
 export class TableFormDialogComponent {
   private readonly fb = new FormBuilder().nonNullable;
+  private readonly authService = inject(AuthService);
 
   readonly open = input(false);
   readonly table = input<TableDTO | null>(null);
@@ -75,7 +77,7 @@ export class TableFormDialogComponent {
     id: [''],
     tableNumber: [1, [Validators.required, Validators.min(1), Validators.max(2147483647)]],
     location: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(100)]],
-    venueId: [DEFAULT_TABLE_VENUE_ID, Validators.required],
+    venueId: [this.currentVenueId(), Validators.required],
     isVip: [false],
     hasView: [false],
   });
@@ -96,11 +98,15 @@ export class TableFormDialogComponent {
         id: '',
         tableNumber: 1,
         location: '',
-        venueId: DEFAULT_TABLE_VENUE_ID,
+        venueId: this.currentVenueId(),
         isVip: false,
         hasView: false,
       });
     }
+  }
+
+    private currentVenueId(): string {
+    return this.authService.getLocationId() || DEFAULT_TABLE_VENUE_ID;
   }
 
   submit(): void {
