@@ -3,7 +3,7 @@ export type ClientStatus = 'ACTIVE' | 'INACTIVE';
 export interface Client {
   id?: string;
   firstName: string;
-  secondName?: string | null;
+  secondName: string;
   firstLastName: string;
   secondLastName: string;
   documentTypeId: string;

@@ -12,6 +12,7 @@ import { ActivatedRoute, NavigationEnd, Router, RouterLink } from '@angular/rout
 import { filter, finalize } from 'rxjs';
 
 import { Client, ClientStatus } from '@commercial/client/models/client.model';
+import { ClientCatalogService } from '@commercial/client/services/client-catalog.service';
 import {
   ClientService,
   getClientErrorMessage,
@@ -35,8 +36,11 @@ interface ClientToast {
 })
 export class ClientList implements OnInit, OnDestroy {
   private readonly clientService = inject(ClientService);
+  private readonly catalogService = inject(ClientCatalogService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+
+  private readonly documentTypeLabels = signal<Map<string, string>>(new Map());
 
   protected readonly clients = signal<Client[]>([]);
   protected readonly loading = signal(false);
@@ -68,6 +72,7 @@ export class ClientList implements OnInit, OnDestroy {
         client.email,
         client.phone,
         client.documentNumber,
+        this.documentTypeLabel(client.documentTypeId),
         client.address,
       ]
         .join(' ')
@@ -86,6 +91,7 @@ export class ClientList implements OnInit, OnDestroy {
   });
 
   ngOnInit(): void {
+    this.loadDocumentTypes();
     this.loadClients();
 
     this.route.queryParamMap.subscribe((params) => {
@@ -171,16 +177,42 @@ export class ClientList implements OnInit, OnDestroy {
     return client.status === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE';
   }
 
+  protected documentTypeLabel(documentTypeId: string): string {
+    const label = this.documentTypeLabels().get(documentTypeId);
+    return label ?? 'Documento';
+  }
+
   protected fullName(client: Client): string {
+    const firstName = (client.firstName ?? '').trim();
+    const secondName = (client.secondName ?? '').trim();
+    const includeSecondName =
+      !!secondName && secondName.localeCompare(firstName, undefined, { sensitivity: 'accent' }) !== 0;
+
     return [
-      client.firstName,
-      client.secondName,
+      firstName,
+      includeSecondName ? secondName : '',
       client.firstLastName,
       client.secondLastName,
     ]
+      .map((part) => (part ?? '').trim())
       .filter(Boolean)
       .join(' ')
       .trim() || 'Sin nombre';
+  }
+
+  private loadDocumentTypes(): void {
+    this.catalogService.getDocumentTypes().subscribe({
+      next: (types) => {
+        const labels = new Map(
+          types.map((type) => [
+            type.id,
+            type.shortLabel ? `${type.shortLabel} · ${type.label}` : type.label,
+          ]),
+        );
+        this.documentTypeLabels.set(labels);
+      },
+      error: () => this.documentTypeLabels.set(new Map()),
+    });
   }
 
   private loadClients(options: { showLoading?: boolean } = {}): void {

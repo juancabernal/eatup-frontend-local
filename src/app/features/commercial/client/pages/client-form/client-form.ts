@@ -9,7 +9,7 @@ import {
 } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { finalize } from 'rxjs';
+import { forkJoin, finalize, of, switchMap } from 'rxjs';
 
 import {
   CatalogOption,
@@ -18,6 +18,7 @@ import {
   CreateClientRequest,
   UpdateClientRequest,
 } from '@commercial/client/models/client.model';
+import { ClientCatalogService } from '@commercial/client/services/client-catalog.service';
 import {
   ClientService,
   getClientErrorMessage,
@@ -48,25 +49,29 @@ type ClientFormControlName =
 })
 export class ClientForm implements OnInit {
   private readonly clientService = inject(ClientService);
+  private readonly catalogService = inject(ClientCatalogService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly fb = new FormBuilder().nonNullable;
   private readonly lettersPattern = /^[A-Za-z\s]+$/;
 
   protected readonly isEditing = signal(false);
-  protected readonly loading = signal(false);
+  protected readonly loadingClient = signal(false);
+  protected readonly catalogsLoading = signal(true);
+  protected readonly citiesLoading = signal(false);
   protected readonly submitting = signal(false);
   protected readonly formSubmitted = signal(false);
   protected readonly generalError = signal('');
   protected readonly successMessage = signal('');
+  protected readonly catalogError = signal('');
 
-  protected readonly documentTypes: CatalogOption[] = [
-    {
-      id: '11111111-aaaa-aaaa-aaaa-111111111111',
-      label: 'Cedula de ciudadania',
-      shortLabel: 'CC',
-    },
-  ];
+  protected readonly documentTypes = signal<CatalogOption[]>([]);
+  protected readonly departments = signal<CatalogOption[]>([]);
+  protected readonly cities = signal<CityOption[]>([]);
+
+  protected readonly pageLoading = computed(
+    () => this.catalogsLoading() || this.loadingClient(),
+  );
 
   protected readonly taxRegimes: CatalogOption[] = [
     {
@@ -75,61 +80,35 @@ export class ClientForm implements OnInit {
     },
   ];
 
-  protected readonly departments: CatalogOption[] = [
-    {
-      id: '22222222-bbbb-bbbb-bbbb-222222222222',
-      label: 'Antioquia',
-    },
-  ];
-
-  protected readonly cities: CityOption[] = [
-    {
-      id: 'aaaaaaaa-1111-1111-1111-aaaaaaaaaaaa',
-      label: 'Medellin',
-      departmentId: '22222222-bbbb-bbbb-bbbb-222222222222',
-    },
-  ];
-
   private clientId = '';
   private loadedEmail = '';
+  private pendingCityId = '';
 
   protected readonly form = this.fb.group({
     firstName: ['', [Validators.required, Validators.maxLength(100), Validators.pattern(this.lettersPattern)]],
     secondName: ['', [Validators.maxLength(100), Validators.pattern(this.lettersPattern)]],
     firstLastName: ['', [Validators.required, Validators.maxLength(100), Validators.pattern(this.lettersPattern)]],
     secondLastName: ['', [Validators.required, Validators.maxLength(100), Validators.pattern(this.lettersPattern)]],
-    documentTypeId: [this.documentTypes[0]?.id ?? '', [Validators.required]],
+    documentTypeId: ['', [Validators.required]],
     documentNumber: ['', [Validators.required, Validators.pattern(/^[A-Za-z0-9-]{5,30}$/)]],
     email: ['', [Validators.required, Validators.email, Validators.maxLength(150)]],
     phone: ['', [Validators.required, Validators.pattern(/^\d{10,15}$/)]],
     address: ['', [Validators.required, Validators.maxLength(255)]],
-    departmentId: [this.departments[0]?.id ?? '', [Validators.required]],
-    cityId: [this.cities[0]?.id ?? '', [Validators.required]],
+    departmentId: ['', [Validators.required]],
+    cityId: ['', [Validators.required]],
     taxRegimeId: [this.taxRegimes[0]?.id ?? '', [Validators.required]],
     assignedSellerId: [1, [Validators.required, Validators.min(1)]],
     applyDiscounts: [true],
-  });
-
-  protected readonly availableCities = computed(() => {
-    const departmentId = this.form.controls.departmentId.value;
-    if (!departmentId) {
-      return this.cities;
-    }
-    return this.cities.filter((city) => city.departmentId === departmentId);
   });
 
   ngOnInit(): void {
     this.clientId = this.route.snapshot.paramMap.get('id') ?? '';
     this.isEditing.set(!!this.clientId);
 
+    this.loadCatalogs();
+
     this.form.controls.departmentId.valueChanges.subscribe((departmentId) => {
-      const cityId = this.form.controls.cityId.value;
-      const stillValid = this.cities.some(
-        (city) => city.id === cityId && city.departmentId === departmentId,
-      );
-      if (!stillValid) {
-        this.form.controls.cityId.setValue('');
-      }
+      this.onDepartmentChange(departmentId);
     });
 
     if (this.isEditing()) {
@@ -229,17 +208,104 @@ export class ClientForm implements OnInit {
     }
   }
 
+  private loadCatalogs(): void {
+    this.catalogsLoading.set(true);
+    this.catalogError.set('');
+
+    forkJoin({
+      documentTypes: this.catalogService.getDocumentTypes(),
+      departments: this.catalogService.getDepartments(),
+    })
+      .pipe(finalize(() => this.catalogsLoading.set(false)))
+      .subscribe({
+        next: ({ documentTypes, departments }) => {
+          this.documentTypes.set(documentTypes);
+          this.departments.set(departments);
+
+          const messages: string[] = [];
+          if (documentTypes.length === 0) {
+            messages.push('tipos de documento');
+          }
+          if (departments.length === 0) {
+            messages.push('departamentos');
+          }
+          if (messages.length > 0) {
+            this.catalogError.set(
+              `No hay ${messages.join(' ni ')} disponibles. Verifica el catalogo en la base de datos.`,
+            );
+          }
+        },
+        error: () => {
+          this.documentTypes.set([]);
+          this.departments.set([]);
+          this.catalogError.set('No se pudieron cargar los catalogos del formulario.');
+        },
+      });
+  }
+
+  private onDepartmentChange(departmentId: string): void {
+    if (!departmentId) {
+      this.cities.set([]);
+      this.form.controls.cityId.setValue('');
+      return;
+    }
+
+    this.citiesLoading.set(true);
+
+    this.catalogService
+      .getCities(departmentId)
+      .pipe(finalize(() => this.citiesLoading.set(false)))
+      .subscribe({
+        next: (cities) => {
+          this.cities.set(cities);
+
+          const preferredCityId = this.pendingCityId || this.form.controls.cityId.value;
+          this.pendingCityId = '';
+
+          const selectedCity = cities.find((city) => city.id === preferredCityId);
+          this.form.controls.cityId.setValue(selectedCity?.id ?? cities[0]?.id ?? '');
+        },
+        error: () => {
+          this.cities.set([]);
+          this.form.controls.cityId.setValue('');
+        },
+      });
+  }
+
   private loadClient(): void {
-    this.loading.set(true);
+    this.loadingClient.set(true);
     this.generalError.set('');
 
     this.clientService
       .getClientById(this.clientId)
-      .pipe(finalize(() => this.loading.set(false)))
+      .pipe(
+        switchMap((client) => this.resolveLocation(client)),
+        finalize(() => this.loadingClient.set(false)),
+      )
       .subscribe({
         next: (client) => this.patchForm(client),
         error: (error) => this.generalError.set(getClientErrorMessage(error)),
       });
+  }
+
+  private resolveLocation(client: Client) {
+    const cityId = client.cityId ?? '';
+    if (!cityId) {
+      return of(client);
+    }
+
+    return this.catalogService.getCities().pipe(
+      switchMap((allCities) => {
+        const city = allCities.find((item) => item.id === cityId);
+        this.pendingCityId = cityId;
+
+        if (city) {
+          this.form.controls.departmentId.setValue(city.departmentId, { emitEvent: true });
+        }
+
+        return of(client);
+      }),
+    );
   }
 
   private patchForm(client: Client): void {
@@ -267,7 +333,7 @@ export class ClientForm implements OnInit {
 
     return {
       firstName: raw.firstName.trim(),
-      secondName: raw.secondName.trim() || null,
+      secondName: raw.secondName.trim(),
       firstLastName: raw.firstLastName.trim(),
       secondLastName: raw.secondLastName.trim(),
       documentTypeId: raw.documentTypeId,

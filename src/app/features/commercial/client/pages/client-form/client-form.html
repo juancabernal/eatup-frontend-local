@@ -9,8 +9,8 @@
     <a class="secondary-action" routerLink="/commercial/clients">Volver</a>
   </header>
 
-  @if (loading()) {
-    <div class="state">Cargando cliente...</div>
+  @if (pageLoading()) {
+    <div class="state">Cargando formulario...</div>
   } @else {
     <form [formGroup]="form" (ngSubmit)="save()" class="form-shell">
       @if (generalError()) {
@@ -21,12 +21,16 @@
         <div class="success">{{ successMessage() }}</div>
       }
 
+      @if (catalogError()) {
+        <div class="alert">{{ catalogError() }}</div>
+      }
+
       <div class="section-title">Datos personales</div>
 
       <div class="form-grid">
         <label>
           <span>Primer nombre</span>
-          <input type="text" formControlName="firstName" />
+          <input type="text" formControlName="firstName" autocomplete="given-name" />
           @if (showFieldError('firstName')) {
             <small>{{ fieldError('firstName') }}</small>
           }
@@ -34,7 +38,7 @@
 
         <label>
           <span>Segundo nombre</span>
-          <input type="text" formControlName="secondName" />
+          <input type="text" formControlName="secondName" autocomplete="additional-name" />
           @if (showFieldError('secondName')) {
             <small>{{ fieldError('secondName') }}</small>
           }
@@ -62,9 +66,12 @@
       <div class="form-grid">
         <label>
           <span>Tipo de documento</span>
-          <select formControlName="documentTypeId">
-            @for (type of documentTypes; track type.id) {
-              <option [value]="type.id">{{ type.label }}</option>
+          <select formControlName="documentTypeId" [disabled]="catalogsLoading()">
+            <option value="">Selecciona un tipo de documento</option>
+            @for (type of documentTypes(); track type.id) {
+              <option [value]="type.id">
+                {{ type.shortLabel ? type.shortLabel + ' - ' + type.label : type.label }}
+              </option>
             }
           </select>
           @if (showFieldError('documentTypeId')) {
@@ -102,8 +109,9 @@
       <div class="form-grid">
         <label>
           <span>Departamento</span>
-          <select formControlName="departmentId">
-            @for (department of departments; track department.id) {
+          <select formControlName="departmentId" [disabled]="catalogsLoading()">
+            <option value="">Selecciona un departamento</option>
+            @for (department of departments(); track department.id) {
               <option [value]="department.id">{{ department.label }}</option>
             }
           </select>
@@ -114,8 +122,14 @@
 
         <label>
           <span>Ciudad</span>
-          <select formControlName="cityId">
-            @for (city of availableCities(); track city.id) {
+          <select
+            formControlName="cityId"
+            [disabled]="!form.controls.departmentId.value || citiesLoading()"
+          >
+            <option value="">
+              {{ citiesLoading() ? 'Cargando ciudades...' : 'Selecciona una ciudad' }}
+            </option>
+            @for (city of cities(); track city.id) {
               <option [value]="city.id">{{ city.label }}</option>
             }
           </select>
