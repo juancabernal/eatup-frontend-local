@@ -5,7 +5,10 @@
       <p class="page-subtitle">Gestiona las sedes disponibles para la operación de inventario.</p>
     </div>
 
-    <button type="button" class="btn-primary" (click)="goToCreate()">+ Nueva sede</button>
+    <button type="button" class="btn-primary create-location-btn" (click)="goToCreate()">
+      <span class="btn-icon">+</span>
+      <span>Nueva sede</span>
+    </button>
   </header>
 
   @if (errorMessage()) {
@@ -101,21 +104,32 @@
                   </span>
                 </td>
                 <td>
-                  <button class="action-btn" (click)="goToEdit(location)">Editar</button>
+                  <div class="row-actions">
+                    <button
+                      class="action-pill action-edit"
+                      type="button"
+                      (click)="goToEdit(location)"
+                    >
+                      Editar
+                    </button>
 
-                  <button
-                    class="action-btn"
-                    [disabled]="isToggling(location.id)"
-                    (click)="toggleStatus(location)"
-                  >
-                    {{
-                      isToggling(location.id)
-                        ? 'Procesando...'
-                        : location.active
-                          ? 'Inactivar'
-                          : 'Activar'
-                    }}
-                  </button>
+                    <button
+                      class="action-pill"
+                      type="button"
+                      [class.action-disable]="location.active"
+                      [class.action-enable]="!location.active"
+                      [disabled]="isToggling(location.id)"
+                      (click)="toggleStatus(location)"
+                    >
+                      {{
+                        isToggling(location.id)
+                          ? 'Procesando...'
+                          : location.active
+                            ? 'Inactivar'
+                            : 'Activar'
+                      }}
+                    </button>
+                  </div>
                 </td>
               </tr>
             }
@@ -130,7 +144,12 @@
         </div>
 
         <div class="pagination">
-          <button class="action-btn" type="button" (click)="goToPreviousPage()" [disabled]="currentPage() === 1">
+          <button
+            class="action-btn"
+            type="button"
+            (click)="goToPreviousPage()"
+            [disabled]="currentPage() === 1"
+          >
             Anterior
           </button>
 

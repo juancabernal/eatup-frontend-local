@@ -11,19 +11,26 @@ const PUBLIC_CATALOG_ENDPOINTS = [
   '/userapi/v1/document-types',
   '/userapi/v1/departments',
   '/userapi/v1/cities',
-  '/inventory/api/v1/location/active',
-  '/inventory/api/v1/location'
+  '/inventory/api/v1/location/active'
+  
 ];
 
 function isPublicRequest(url: string, method: string): boolean {
   if (url.includes(LOGIN_ENDPOINT)) {
     return true;
   }
-
-  // Registration is public only for user creation requests.
+  
   if (method === 'POST' && url.includes(REGISTER_USER_ENDPOINT)) {
     return true;
   }
+
+    // Listado de sedes público para el registro de usuarios.
+  if (method === 'GET' && url.includes('/inventory/api/v1/location')) {
+    return true;
+  }
+
+
+
 
   return PUBLIC_CATALOG_ENDPOINTS.some(endpoint => url.includes(endpoint));
 }
