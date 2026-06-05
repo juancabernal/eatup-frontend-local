@@ -10,6 +10,7 @@ export const LOCATION_STORAGE_KEY = 'eatup_location_id';
 interface JwtPayload {
   sub?: string;
   email?: string;
+  exp?: number;
 }
 
 interface UserSummaryResponse {
@@ -69,7 +70,18 @@ export class AuthService {
 
 
   hasValidSession(): boolean {
-    return !!this.getToken();
+    const token = this.getToken();
+
+    if (!token) {
+      return false;
+    }
+
+    if (this.isTokenExpired(token)) {
+      this.logout();
+      return false;
+    }
+
+    return true;
   }
 
   syncTokenFromStorage(): void {
@@ -179,6 +191,26 @@ export class AuthService {
     }
   }
 
+  private isTokenExpired(token: string): boolean {
+    const parts = token.split('.');
+    if (parts.length < 2) return false;
+
+    try {
+      const base64 = parts[1].replaceAll('-', '+').replaceAll('_', '/');
+      const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+      const payload = JSON.parse(atob(padded)) as JwtPayload;
+
+      if (!payload.exp) {
+        return false;
+      }
+
+      return payload.exp * 1000 <= Date.now();
+    } catch {
+      return false;
+    }
+  }
+
+
   private resolveLocationId(user: UserSummaryResponse | undefined, locations: LocationOption[]): string {
     const raw = (user?.locationId || user?.location || '').trim();
     if (!raw) return '';
@@ -235,6 +267,17 @@ export class AuthService {
   }
 
   private clearCookie(name: string): void {
-    document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`;
+    const encodedName = encodeURIComponent(name);
+    const expires = 'expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    const maxAge = 'Max-Age=0';
+    const sameSite = 'SameSite=Lax';
+    const hostname = window.location.hostname;
+    const domains = hostname ? [hostname, `.${hostname}`] : [];
+
+    document.cookie = `${encodedName}=; path=/; ${expires}; ${maxAge}; ${sameSite}`;
+
+    for (const domain of domains) {
+      document.cookie = `${encodedName}=; path=/; domain=${domain}; ${expires}; ${maxAge}; ${sameSite}`;
+    }
   }
 }
