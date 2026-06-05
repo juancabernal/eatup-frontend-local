@@ -160,7 +160,7 @@
         <button
           class="selector-btn"
           type="button"
-          (click)="showTableModal = true"
+          (click)="openTableModal()"
           [attr.aria-label]="selectedTableName || 'Seleccionar mesa'"
         >
           {{ selectedTableName || 'Seleccionar mesa' }}
@@ -562,24 +562,28 @@
       />
 
       <div class="pick-list">
-        @for (t of filteredTables; track t.id) {
-          <button
-            class="pick"
-            type="button"
-            [disabled]="!tableAvailable(t)"
-            (click)="pickTable(t)"
-          >
-            <span>{{ tableDisplayName(t) }}</span>
-            <small
-              class="badge"
-              [class.ok]="tableAvailable(t)"
-              [class.error]="!tableAvailable(t)"
+        @if (tablesLoading) {
+          <div class="empty-state">Actualizando mesas disponibles...</div>
+        } @else {
+          @for (t of filteredTables; track t.id) {
+            <button
+              class="pick"
+              type="button"
+              [disabled]="!tableAvailable(t)"
+              (click)="pickTable(t)"
             >
-              {{ tableAvailable(t) ? 'Disponible' : 'No disponible' }}
-            </small>
-          </button>
-        } @empty {
-          <div class="empty-state">No se encontraron mesas para la sede actual.</div>
+              <span>{{ tableDisplayName(t) }}</span>
+              <small
+                class="badge"
+                [class.ok]="tableAvailable(t)"
+                [class.error]="!tableAvailable(t)"
+              >
+                {{ tableAvailable(t) ? 'Disponible' : 'No disponible' }}
+              </small>
+            </button>
+          } @empty {
+            <div class="empty-state">No se encontraron mesas para la sede actual.</div>
+          }
         }
       </div>
     </div>
