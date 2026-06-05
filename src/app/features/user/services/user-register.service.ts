@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
+import { ENV } from '@config/env.config';
 import {
   CityOption,
   DepartmentOption,
@@ -28,7 +29,7 @@ type LocationCatalogResponse =
 @Injectable({ providedIn: 'root' })
 export class UserRegisterService {
   private readonly http = inject(HttpClient);
-  private readonly apiRoot = '';
+  private readonly apiRoot = ENV.apiUrl.replace('/api/v1', '');
 
   async loadCatalogs(): Promise<RegisterCatalogs> {
     const [docTypesResult, depsResult, locationsResult] = await Promise.allSettled([
@@ -40,9 +41,10 @@ export class UserRegisterService {
     return {
       documentTypes: docTypesResult.status === 'fulfilled' ? docTypesResult.value : [],
       departments: depsResult.status === 'fulfilled' ? depsResult.value : [],
-      locations: locationsResult.status === 'fulfilled'
-        ? this.onlyActiveLocations(locationsResult.value)
-        : []
+      locations:
+        locationsResult.status === 'fulfilled'
+          ? this.onlyActiveLocations(locationsResult.value)
+          : []
     };
   }
 
@@ -99,15 +101,15 @@ export class UserRegisterService {
     return Boolean(location.active);
   }
 
-
   async loadCities(departmentId: string): Promise<CityOption[]> {
     if (!departmentId) return [];
 
     try {
-      return await firstValueFrom(this.http.get<CityOption[]>(
-        `${this.apiRoot}/userapi/v1/cities`,
-        { params: { departmentId } }
-      ));
+      return await firstValueFrom(
+        this.http.get<CityOption[]>(`${this.apiRoot}/userapi/v1/cities`, {
+          params: { departmentId }
+        })
+      );
     } catch {
       return [];
     }
