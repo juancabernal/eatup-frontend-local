@@ -102,8 +102,17 @@ export interface RestaurantTable {
   occupied?: boolean;
   reserved?: boolean;
   canOpenNow?: boolean;
+  isAvailable?: boolean;
+  is_available?: boolean;
+  isAccessible?: boolean;
+  is_accessible?: boolean;
+  hasView?: boolean;
+  has_view?: boolean;
   active?: boolean;
+  location?: string;
   locationId?: string;
+  venueId?: string;
+  venue_id?: string;
 }
 
 export interface CartItem {
