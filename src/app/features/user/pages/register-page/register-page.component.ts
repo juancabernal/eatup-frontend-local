@@ -91,7 +91,9 @@ export class RegisterPageComponent implements OnInit {
       this.resetModel();
       form.resetForm(this.model);
       this.cities.set([]);
-      void this.router.navigate(['/login']);
+      window.setTimeout(() => {
+        void this.router.navigate(['/login']);
+      }, 1200);
     } catch (error) {
       this.errorMsg.set(
         this.registerService.getBackendErrorMessage(error) ||
@@ -119,11 +121,11 @@ export class RegisterPageComponent implements OnInit {
       const locations = catalogs.locations;
 
       this.locations.set(locations);
-      
+
       if (!this.model.locationId && locations.length === 1) {
         this.model.locationId = locations[0].id;
       }
-      
+
       if (locations.length === 0) {
         this.errorMsg.set('No hay sedes activas disponibles para registrar usuarios. Crea o activa una sede antes de continuar.');
       }

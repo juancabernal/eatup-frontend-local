@@ -1,7 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
-import { ENV } from '@config/env.config';
 import {
   CityOption,
   DepartmentOption,
@@ -47,28 +46,26 @@ export class UserRegisterService {
     };
   }
 
-private async loadLocations(): Promise<LocationOption[]> {
-  const fromActive = await this.fetchLocations(
-    `${this.apiRoot}/inventory/api/v1/location/active`
-  );
-  if (fromActive.length > 0) {
-    return fromActive;
-  }
-  return this.fetchLocations(`${this.apiRoot}/inventory/api/v1/location`);
-}
+  private async loadLocations(): Promise<LocationOption[]> {
+    const fromActive = await this.fetchLocations(
+      `${this.apiRoot}/inventory/api/v1/location/active`
+    );
 
-private async fetchLocations(url: string): Promise<LocationOption[]> {
-  try {
-    const response = await firstValueFrom(this.http.get<LocationCatalogResponse>(url));
-    console.log('>>> fetchLocations raw response para', url, response);
-    const result = this.onlyActiveLocations(response);
-    console.log('>>> onlyActiveLocations result:', result);
-    return result;
-  } catch (error) {
-    console.error('>>> fetchLocations error para URL:', url, error);
-    return [];
+    if (fromActive.length > 0) {
+      return fromActive;
+    }
+
+    return this.fetchLocations(`${this.apiRoot}/inventory/api/v1/location`);
   }
-}
+
+  private async fetchLocations(url: string): Promise<LocationOption[]> {
+    try {
+      const response = await firstValueFrom(this.http.get<LocationCatalogResponse>(url));
+      return this.onlyActiveLocations(response);
+    } catch {
+      return [];
+    }
+  }
 
   private onlyActiveLocations(response: LocationCatalogResponse): LocationOption[] {
     const locations = this.extractLocationItems(response);

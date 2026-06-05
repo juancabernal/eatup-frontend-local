@@ -12,7 +12,6 @@ const PUBLIC_CATALOG_ENDPOINTS = [
   '/userapi/v1/departments',
   '/userapi/v1/cities',
   '/inventory/api/v1/location/active'
-  
 ];
 
 function isPublicRequest(url: string, method: string): boolean {
@@ -24,13 +23,10 @@ function isPublicRequest(url: string, method: string): boolean {
     return true;
   }
 
-    // Listado de sedes público para el registro de usuarios.
+  // Listado de sedes público para el registro de usuarios.
   if (method === 'GET' && url.includes('/inventory/api/v1/location')) {
     return true;
   }
-
-
-
 
   return PUBLIC_CATALOG_ENDPOINTS.some(endpoint => url.includes(endpoint));
 }
@@ -40,8 +36,6 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const authService = inject(AuthService);
   const token = authService.getToken();
   const publicRequest = isPublicRequest(req.url, req.method);
-
-  console.log('>>> INTERCEPTOR', req.url, '| token:', !!token, '| public:', publicRequest);
 
   // Si hay token, siempre adjuntarlo (incluso en rutas públicas)
   if (token) {
