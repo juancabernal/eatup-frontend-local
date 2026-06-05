@@ -167,7 +167,7 @@
         </button>
       </div>
 
-      <p class="muted">Sede configurada</p>
+      <p class="muted">{{ salesDiagnostic.locationId ? 'Sede configurada: ' + salesDiagnostic.locationId : 'Sin sede configurada' }}</p>
 
       <div class="cart-list">
         @for (i of cartItems; track i.recipeId) {
@@ -235,6 +235,7 @@
 
   <section class="surface sales-panel">
     <h2>Ventas recientes</h2>
+    <p class="muted">{{ salesDiagnosticLabel() }}</p>
 
     <div class="filters-card">
       <div class="filters-grid sales-filters-grid">
@@ -530,6 +531,8 @@
             <span>{{ sellerDisplayName(s) }}</span>
             <small>{{ sellerDocument(s) }}</small>
           </button>
+        } @empty {
+          <div class="empty-state">No se encontraron vendedores.</div>
         }
       </div>
     </div>
@@ -572,6 +575,8 @@
               {{ tableAvailable(t) ? 'Disponible' : 'No disponible' }}
             </small>
           </button>
+        } @empty {
+          <div class="empty-state">No se encontraron mesas para la sede actual.</div>
         }
       </div>
     </div>

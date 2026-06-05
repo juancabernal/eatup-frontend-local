@@ -1,7 +1,7 @@
 import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { EMPTY, catchError, finalize, forkJoin, interval, switchMap, take, timer } from 'rxjs';
+import { EMPTY, catchError, finalize, forkJoin, interval, of, switchMap, take, timer } from 'rxjs';
 import {
   CartItem,
   RecipePreparationTrace,
@@ -98,9 +98,18 @@ export class SalesPageComponent implements OnInit {
   salesPageSize = 5;
   salesPageSizeOptions = [5, 10, 20];
 
+  salesDiagnostic = {
+    locationId: '',
+    receivedCount: 0,
+    filteredCount: 0,
+    filteredByLocation: false
+  };
+  detectedTablesEndpoint = '';
+
   private salesPollingStarted = false;
   private salesInitialLoadCompleted = false;
   private lastSalesErrorToastAt = 0;
+  private lastLocationFilterWarning = '';
 
   constructor(
     private salesService: SalesService,
@@ -117,33 +126,59 @@ export class SalesPageComponent implements OnInit {
   loadAll(): void {
     this.loading = true;
 
-    forkJoin([
-      this.recipeService.getRecipes(),
-      this.salesService.getSales(),
-      this.sellerTableService.getSellers(),
-      this.sellerTableService.getTables()
-    ])
+    forkJoin({
+      recipes: this.recipeService.getRecipes().pipe(
+        catchError(() => {
+          this.showToast('error', 'No se pudieron cargar las recetas.');
+          return of([] as RecipeResponse[]);
+        })
+      ),
+      sales: this.salesService.getSales().pipe(
+        catchError(() => {
+          this.showToast('error', 'No se pudieron cargar las ventas recientes.');
+          return of([] as SaleResponse[]);
+        })
+      ),
+      sellers: this.sellerTableService.getSellers().pipe(
+        catchError(() => {
+          this.showToast('error', 'No se pudieron cargar los vendedores.');
+          return of([] as Seller[]);
+        })
+      ),
+      tables: this.sellerTableService.getTables().pipe(
+        catchError(() => {
+          this.showToast('error', 'No se pudieron cargar las mesas.');
+          return of([] as RestaurantTable[]);
+        })
+      )
+    })
       .pipe(
         finalize(() => {
           this.loading = false;
           this.cdr.markForCheck();
         })
       )
-      .subscribe({
-        next: ([recipes, sales, sellers, tables]) => {
-          this.recipes = [...recipes];
-          this.sales = this.normalizeAndSortSales(sales);
-          this.applySaleFilters(false);
+      .subscribe(({ recipes, sales, sellers, tables }) => {
+        this.recipes = [...recipes];
+        this.sales = this.normalizeAndSortSales(sales);
+        this.applySaleFilters(false);
 
-          this.sellers = [...sellers];
-          this.tables = [...tables];
+        this.sellers = [...sellers];
+        this.tables = [...tables];
+        this.detectedTablesEndpoint = this.sellerTableService.detectedTablesEndpoint;
 
-          if (!this.salesPollingStarted) {
-            this.startSalesPolling();
-          }
-        },
-        error: () => {
-          this.showToast('error', 'No se pudieron cargar los datos de ventas.');
+        if (this.sellerTableService.sellersLookupStatus === 'failed') {
+          this.showToast('error', 'No se pudieron cargar los vendedores.');
+        }
+
+        if (this.sellerTableService.tablesLookupStatus === 'empty') {
+          this.showToast('error', 'No se encontraron mesas para la sede actual.');
+        } else if (this.sellerTableService.tablesLookupStatus === 'failed') {
+          this.showToast('error', 'No se pudieron cargar las mesas.');
+        }
+
+        if (!this.salesPollingStarted) {
+          this.startSalesPolling();
         }
       });
   }
@@ -278,6 +313,13 @@ export class SalesPageComponent implements OnInit {
       return;
     }
 
+    const locationId = this.getLocationId();
+
+    if (!locationId) {
+      this.showToast('error', 'No hay sede configurada para crear la venta.');
+      return;
+    }
+
     if (this.cartItems.some(item => !item.recipeId || item.quantity <= 0 || item.unitPrice <= 0)) {
       this.showToast('error', 'La cantidad y el precio unitario deben ser mayores que cero.');
       return;
@@ -285,7 +327,7 @@ export class SalesPageComponent implements OnInit {
 
     const payload = {
       sellerId: this.selectedSellerId,
-      locationId: this.getLocationId(),
+      locationId,
       tableId: this.selectedTableId,
       details: this.cartItems.map(item => ({
         recipeId: item.recipeId,
@@ -820,10 +862,22 @@ export class SalesPageComponent implements OnInit {
     const fromDate = this.saleDateFrom ? new Date(`${this.saleDateFrom}T00:00:00`).getTime() : null;
     const toDate = this.saleDateTo ? new Date(`${this.saleDateTo}T23:59:59.999`).getTime() : null;
     const currentLocationId = this.getLocationId();
+    const salesWithLocation = this.sales.filter(sale => !!sale.locationId);
+    const shouldFilterByLocation = !!currentLocationId &&
+      salesWithLocation.some(sale => sale.locationId === currentLocationId);
+
+    if (currentLocationId && salesWithLocation.length > 0 && !shouldFilterByLocation) {
+      const warningKey = `${currentLocationId}:${this.sales.length}`;
+
+      if (this.lastLocationFilterWarning !== warningKey) {
+        this.lastLocationFilterWarning = warningKey;
+        this.showToast('error', 'La sede local no coincide con las ventas recibidas; se muestran todas para no ocultar datos.');
+      }
+    }
 
     this.filteredSales = this.sales.filter(sale => {
 
-      if (currentLocationId && sale.locationId && sale.locationId !== currentLocationId) {
+      if (shouldFilterByLocation && sale.locationId && sale.locationId !== currentLocationId) {
         return false;
       }
 
@@ -863,6 +917,12 @@ export class SalesPageComponent implements OnInit {
     }
 
     this.ensureValidSalesPage();
+    this.salesDiagnostic = {
+      locationId: currentLocationId,
+      receivedCount: this.sales.length,
+      filteredCount: this.filteredSales.length,
+      filteredByLocation: shouldFilterByLocation
+    };
     this.cdr.markForCheck();
   }
 
@@ -1016,6 +1076,15 @@ export class SalesPageComponent implements OnInit {
         this.salesInitialLoadCompleted = true;
         this.cdr.markForCheck();
       });
+  }
+
+  salesDiagnosticLabel(): string {
+    const location = this.salesDiagnostic.locationId || 'sin sede';
+    const locationFilter = this.salesDiagnostic.filteredByLocation
+      ? 'con filtro por sede'
+      : 'sin filtro por sede';
+
+    return `Sede: ${location} · ventas recibidas: ${this.salesDiagnostic.receivedCount} · visibles: ${this.salesDiagnostic.filteredCount} · ${locationFilter}`;
   }
 
   private getLocationId(): string {

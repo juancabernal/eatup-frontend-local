@@ -10,7 +10,27 @@ export class RecipeService {
 
   getRecipes(): Observable<RecipeResponse[]> {
     return this.http.get<unknown>(`${this.env.apiUrl}/recipes`).pipe(
-      map((value) => Array.isArray(value) ? value : ((value as any)?.content ?? (value as any)?.data ?? []))
+      map(value => this.normalizeRecipes(value))
     );
+  }
+
+  private normalizeRecipes(value: unknown): RecipeResponse[] {
+    if (Array.isArray(value)) {
+      return value as RecipeResponse[];
+    }
+
+    if (!value || typeof value !== 'object') {
+      return [];
+    }
+
+    const response = value as Record<string, unknown>;
+    const candidates = [
+      response['content'],
+      response['data'],
+      response['items'],
+      response['recipes']
+    ];
+
+    return (candidates.find(Array.isArray) ?? []) as RecipeResponse[];
   }
 }
