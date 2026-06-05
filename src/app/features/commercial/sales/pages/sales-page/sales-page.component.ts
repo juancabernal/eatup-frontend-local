@@ -73,6 +73,7 @@ export class SalesPageComponent implements OnInit {
   showTraceModal = false;
 
   traceLoading = false;
+  tablesLoading = false;
   selectedTraceSaleId = '';
 
   selectedCartRecipeId = '';
@@ -510,6 +511,38 @@ export class SalesPageComponent implements OnInit {
     this.selectedSellerId = seller.id;
     this.selectedSellerName = this.sellerDisplayName(seller);
     this.showSellerModal = false;
+  }
+
+  openTableModal(): void {
+    this.showTableModal = true;
+    this.refreshTables();
+  }
+
+  refreshTables(silent = false): void {
+    this.tablesLoading = true;
+
+    this.sellerTableService.getTables().subscribe({
+      next: tables => {
+        this.tables = [...tables];
+        this.detectedTablesEndpoint = this.sellerTableService.detectedTablesEndpoint;
+        this.tablesLoading = false;
+
+        if (!silent && this.sellerTableService.tablesLookupStatus === 'failed') {
+          this.showToast('error', 'No se pudieron actualizar las mesas.');
+        }
+
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.tablesLoading = false;
+
+        if (!silent) {
+          this.showToast('error', 'No se pudieron actualizar las mesas.');
+        }
+
+        this.cdr.markForCheck();
+      }
+    });
   }
 
   tableAvailable(table: RestaurantTable): boolean {
