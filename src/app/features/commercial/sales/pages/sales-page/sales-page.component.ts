@@ -211,8 +211,10 @@ export class SalesPageComponent implements OnInit {
   get filteredTables(): RestaurantTable[] {
     const term = this.tableQuery.toLowerCase();
 
-    return this.tables.filter(table =>
-      this.tableDisplayName(table).toLowerCase().includes(term)
+    return this.tables.filter(
+      table =>
+        this.tableAvailable(table) &&
+        this.tableDisplayName(table).toLowerCase().includes(term)
     );
   }
 
@@ -511,29 +513,58 @@ export class SalesPageComponent implements OnInit {
   }
 
   tableAvailable(table: RestaurantTable): boolean {
-    const status = (table.status || '').toUpperCase();
+    const status = this.normalizeTableStatus(table.status);
+    const unavailableStatuses = [
+      'OCCUPIED',
+      'OCUPADA',
+      'BUSY',
+      'IN_USE',
+      'INACTIVE',
+      'RESERVED',
+      'RESERVADA',
+      'BLOCKED',
+      'BLOQUEADA'
+    ];
 
-    if (
-      table.available === true ||
-      table.canOpenNow === true ||
-      table.reserved === false ||
-      table.occupied === false ||
-      ['AVAILABLE', 'DISPONIBLE', 'FREE', 'LIBRE', 'ACTIVE'].includes(status)
-    ) {
-      return true;
+    if (unavailableStatuses.includes(status)) {
+      return false;
     }
 
     if (
+      table.occupied === true ||
+      table.reserved === true ||
       table.available === false ||
       table.canOpenNow === false ||
-      table.reserved === true ||
-      table.occupied === true ||
-      ['OCCUPIED', 'OCUPADA', 'BUSY', 'IN_USE', 'INACTIVE'].includes(status)
+      table.isAvailable === false ||
+      table.is_available === false ||
+      table.isAccessible === false ||
+      table.is_accessible === false
     ) {
       return false;
     }
 
+    const availableStatuses = ['AVAILABLE', 'DISPONIBLE', 'FREE', 'LIBRE'];
+
+    if (availableStatuses.includes(status)) {
+      return true;
+    }
+
+    if (
+      table.available === true ||
+      table.canOpenNow === true ||
+      table.isAvailable === true ||
+      table.is_available === true ||
+      table.occupied === false ||
+      table.reserved === false
+    ) {
+      return true;
+    }
+
     return false;
+  }
+
+  private normalizeTableStatus(status?: string): string {
+    return (status || '').trim().toUpperCase();
   }
 
   pickTable(table: RestaurantTable): void {
