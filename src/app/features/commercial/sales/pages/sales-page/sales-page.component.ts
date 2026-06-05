@@ -5,6 +5,7 @@ import { EMPTY, catchError, finalize, forkJoin, interval, of, switchMap, take, t
 import {
   CartItem,
   RecipePreparationTrace,
+  LocationOption,
   RecipeResponse,
   RestaurantTable,
   SaleResponse,
@@ -98,11 +99,16 @@ export class SalesPageComponent implements OnInit {
   salesPageSize = 5;
   salesPageSizeOptions = [5, 10, 20];
 
+  currentLocationId = '';
+  currentLocationName = '';
+
   salesDiagnostic = {
     locationId: '',
+    locationName: '',
     receivedCount: 0,
     filteredCount: 0,
-    filteredByLocation: false
+    filteredByLocation: false,
+    hasLocationMatches: false
   };
   detectedTablesEndpoint = '';
 
@@ -110,6 +116,7 @@ export class SalesPageComponent implements OnInit {
   private salesInitialLoadCompleted = false;
   private lastSalesErrorToastAt = 0;
   private lastLocationFilterWarning = '';
+  private locationCatalog: LocationOption[] = [];
 
   constructor(
     private salesService: SalesService,
@@ -150,6 +157,9 @@ export class SalesPageComponent implements OnInit {
           this.showToast('error', 'No se pudieron cargar las mesas.');
           return of([] as RestaurantTable[]);
         })
+      ),
+      locations: this.sellerTableService.getLocations().pipe(
+        catchError(() => of([] as LocationOption[]))
       )
     })
       .pipe(
@@ -158,9 +168,10 @@ export class SalesPageComponent implements OnInit {
           this.cdr.markForCheck();
         })
       )
-      .subscribe(({ recipes, sales, sellers, tables }) => {
+      .subscribe(({ recipes, sales, sellers, tables, locations }) => {
         this.recipes = [...recipes];
         this.sales = this.normalizeAndSortSales(sales);
+        this.loadCurrentLocationName(locations);
         this.applySaleFilters(false);
 
         this.sellers = [...sellers];
@@ -401,6 +412,7 @@ export class SalesPageComponent implements OnInit {
     this.salesService.getSales().subscribe({
       next: sales => {
         this.sales = this.normalizeAndSortSales(sales);
+        this.loadCurrentLocationName();
         this.applySaleFilters(false);
         this.cdr.markForCheck();
       },
@@ -863,21 +875,22 @@ export class SalesPageComponent implements OnInit {
     const toDate = this.saleDateTo ? new Date(`${this.saleDateTo}T23:59:59.999`).getTime() : null;
     const currentLocationId = this.getLocationId();
     const salesWithLocation = this.sales.filter(sale => !!sale.locationId);
-    const shouldFilterByLocation = !!currentLocationId &&
+    const hasLocationMatches = !!currentLocationId &&
       salesWithLocation.some(sale => sale.locationId === currentLocationId);
+    const shouldFilterByLocation = !!currentLocationId && salesWithLocation.length > 0;
 
-    if (currentLocationId && salesWithLocation.length > 0 && !shouldFilterByLocation) {
+    if (shouldFilterByLocation && !hasLocationMatches) {
       const warningKey = `${currentLocationId}:${this.sales.length}`;
 
       if (this.lastLocationFilterWarning !== warningKey) {
         this.lastLocationFilterWarning = warningKey;
-        this.showToast('error', 'La sede local no coincide con las ventas recibidas; se muestran todas para no ocultar datos.');
+        this.showToast('error', 'No hay ventas registradas para la sede actual.');
       }
     }
 
     this.filteredSales = this.sales.filter(sale => {
 
-      if (shouldFilterByLocation && sale.locationId && sale.locationId !== currentLocationId) {
+      if (shouldFilterByLocation && sale.locationId !== currentLocationId) {
         return false;
       }
 
@@ -919,9 +932,11 @@ export class SalesPageComponent implements OnInit {
     this.ensureValidSalesPage();
     this.salesDiagnostic = {
       locationId: currentLocationId,
+      locationName: this.resolveLocationName(currentLocationId),
       receivedCount: this.sales.length,
       filteredCount: this.filteredSales.length,
-      filteredByLocation: shouldFilterByLocation
+      filteredByLocation: shouldFilterByLocation,
+      hasLocationMatches
     };
     this.cdr.markForCheck();
   }
@@ -1072,6 +1087,7 @@ export class SalesPageComponent implements OnInit {
       )
       .subscribe(sales => {
         this.sales = this.normalizeAndSortSales(sales);
+        this.loadCurrentLocationName();
         this.applySaleFilters(false);
         this.salesInitialLoadCompleted = true;
         this.cdr.markForCheck();
@@ -1079,12 +1095,56 @@ export class SalesPageComponent implements OnInit {
   }
 
   salesDiagnosticLabel(): string {
-    const location = this.salesDiagnostic.locationId || 'sin sede';
+    const count = this.salesDiagnostic.filteredCount;
+    const saleWord = count === 1 ? 'venta' : 'ventas';
+
+    if (this.salesDiagnostic.filteredByLocation) {
+      if (!this.salesDiagnostic.hasLocationMatches) {
+        return 'No hay ventas registradas para la sede actual.';
+      }
+
+      return `Mostrando ${count} ${saleWord} de la sede ${this.salesDiagnostic.locationName || 'actual'}`;
+    }
+
+    return `Mostrando ${count} ${saleWord}`;
+  }
+
+  salesTechnicalDiagnosticLabel(): string {
+    const location = this.salesDiagnostic.locationName || 'sede actual';
     const locationFilter = this.salesDiagnostic.filteredByLocation
       ? 'con filtro por sede'
       : 'sin filtro por sede';
 
-    return `Sede: ${location} · ventas recibidas: ${this.salesDiagnostic.receivedCount} · visibles: ${this.salesDiagnostic.filteredCount} · ${locationFilter}`;
+    return `Sede: ${location} · recibidas: ${this.salesDiagnostic.receivedCount} · visibles: ${this.salesDiagnostic.filteredCount} · ${locationFilter}`;
+  }
+
+  private loadCurrentLocationName(locations: LocationOption[] | null = null): void {
+    if (locations) {
+      this.locationCatalog = locations;
+    }
+
+    this.currentLocationId = this.getLocationId();
+    this.currentLocationName = this.resolveLocationName(this.currentLocationId);
+  }
+
+  private resolveLocationName(locationId: string, locations: LocationOption[] = this.locationCatalog): string {
+    if (!locationId) {
+      return '';
+    }
+
+    const saleLocationName = this.sales
+      .find(sale => sale.locationId === locationId && !!sale.locationName?.trim())
+      ?.locationName?.trim();
+
+    if (saleLocationName) {
+      return saleLocationName;
+    }
+
+    const catalogLocationName = locations
+      .find(location => location.id === locationId)
+      ?.name?.trim();
+
+    return catalogLocationName || this.currentLocationName || 'actual';
   }
 
   private getLocationId(): string {

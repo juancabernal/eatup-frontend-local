@@ -5,6 +5,7 @@ import { LOCATION_STORAGE_KEY } from '@features/user/services/auth.service';
 @Injectable({ providedIn: 'root' })
 export class EnvironmentService {
   readonly apiUrl = ENV.apiUrl;
+  readonly production = ENV.production;
   get locationId(): string {
     return localStorage.getItem(LOCATION_STORAGE_KEY) ?? '';
   }

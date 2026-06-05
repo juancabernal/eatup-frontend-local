@@ -25,6 +25,7 @@ export interface SaleResponse {
   id: string;
   sellerId: string;
   locationId: string;
+  locationName?: string;
   tableId: string;
   status: SaleStatus;
   totalAmount: number;
@@ -80,6 +81,12 @@ export interface Seller {
   identification_number_id?: string;
   status?: string;
   active?: boolean;
+}
+
+export interface LocationOption {
+  id: string;
+  name: string;
+  active?: boolean | string | number;
 }
 
 export interface RestaurantTable {

@@ -167,7 +167,7 @@
         </button>
       </div>
 
-      <p class="muted">{{ salesDiagnostic.locationId ? 'Sede configurada: ' + salesDiagnostic.locationId : 'Sin sede configurada' }}</p>
+      <p class="muted">{{ currentLocationId ? 'Sede configurada: ' + (currentLocationName || 'actual') : 'Sin sede configurada' }}</p>
 
       <div class="cart-list">
         @for (i of cartItems; track i.recipeId) {
@@ -236,6 +236,9 @@
   <section class="surface sales-panel">
     <h2>Ventas recientes</h2>
     <p class="muted">{{ salesDiagnosticLabel() }}</p>
+    @if (!env.production) {
+      <p class="muted">{{ salesTechnicalDiagnosticLabel() }}</p>
+    }
 
     <div class="filters-card">
       <div class="filters-grid sales-filters-grid">
@@ -409,7 +412,7 @@
             <tr>
               <td colspan="6">
                 <div class="empty-state">
-                  No se encontraron ventas con esos filtros.
+                  {{ salesDiagnostic.filteredByLocation && !salesDiagnostic.hasLocationMatches ? 'No hay ventas registradas para la sede actual.' : 'No se encontraron ventas con esos filtros.' }}
                 </div>
               </td>
             </tr>

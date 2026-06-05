@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { catchError, Observable, of, switchMap } from 'rxjs';
 import { EnvironmentService } from '../../../../core/services/environment.service';
-import { RestaurantTable, Seller } from '../models/sales.model';
+import { LocationOption, RestaurantTable, Seller } from '../models/sales.model';
 
 type LookupStatus = 'idle' | 'success' | 'empty' | 'failed';
 
@@ -30,6 +30,16 @@ export class SellerTableService {
     this.detectedSellersEndpoint = '';
     this.sellersLookupStatus = 'idle';
     return this.tryEndpoints<Seller>(endpoints, 'seller');
+  }
+
+
+  getLocations(): Observable<LocationOption[]> {
+    const endpoints = [
+      `${this.apiRoot}/inventory/api/v1/location/active`,
+      `${this.apiRoot}/inventory/api/v1/location`
+    ];
+
+    return this.tryLocationEndpoints(endpoints);
   }
 
   getTables(): Observable<RestaurantTable[]> {
@@ -60,6 +70,32 @@ export class SellerTableService {
     this.detectedTablesEndpoint = '';
     this.tablesLookupStatus = 'idle';
     return this.tryEndpoints<RestaurantTable>(endpoints, 'table');
+  }
+
+
+  private tryLocationEndpoints(endpoints: string[], idx = 0): Observable<LocationOption[]> {
+    if (idx >= endpoints.length) {
+      return of([]);
+    }
+
+    return this.http.get<unknown>(endpoints[idx]).pipe(
+      switchMap(response => {
+        const locations = this.normalize<LocationOption>(response)
+          .filter(location => !!location.id && !!location.name)
+          .map(location => ({
+            id: location.id,
+            name: location.name,
+            active: location.active
+          }));
+
+        if (locations.length > 0) {
+          return of(locations);
+        }
+
+        return this.tryLocationEndpoints(endpoints, idx + 1);
+      }),
+      catchError(() => this.tryLocationEndpoints(endpoints, idx + 1))
+    );
   }
 
   private tryEndpoints<T>(
@@ -119,6 +155,7 @@ export class SellerTableService {
       response['content'] ??
       response['data'] ??
       response['sellers'] ??
+      response['locations'] ??
       response['tables'] ??
       response['sessions'] ??
       response['items'] ??
