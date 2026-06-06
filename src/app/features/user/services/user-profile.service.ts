@@ -30,7 +30,7 @@ export class UserProfileService {
 
     const summary = await this.findCurrentUserSummary(tokenEmail);
     if (!summary) {
-      throw new Error('No se encontro el usuario autenticado en el listado.');
+      throw new Error('No se pudo identificar de forma exacta al usuario autenticado en el listado.');
     }
 
     const detail = await firstValueFrom(this.http.get<UserDetailResponse>(
@@ -143,29 +143,11 @@ export class UserProfileService {
   private matchesUserEmail(listEmail: string, tokenEmail: string): boolean {
     const a = this.normalize(listEmail);
     const b = this.normalize(tokenEmail);
+
     if (!a || !b) return false;
-    if (a === b) return true;
+    if (a.includes('*') || b.includes('*')) return false;
 
-    const [listLocal, listDomain = ''] = a.split('@');
-    const [tokenLocal, tokenDomain = ''] = b.split('@');
-    if (!listDomain || !tokenDomain || listDomain !== tokenDomain) {
-      return false;
-    }
-
-    const firstAsterisk = listLocal.indexOf('*');
-    if (firstAsterisk === -1) {
-      return false;
-    }
-
-    const lastAsterisk = listLocal.lastIndexOf('*');
-    const prefix = listLocal.slice(0, firstAsterisk);
-    const suffix = listLocal.slice(lastAsterisk + 1);
-
-    if (tokenLocal.length < prefix.length + suffix.length) {
-      return false;
-    }
-
-    return tokenLocal.startsWith(prefix) && tokenLocal.endsWith(suffix);
+    return a === b;
   }
 
   private extractEmailFromToken(): string {
