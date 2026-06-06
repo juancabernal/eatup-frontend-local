@@ -452,7 +452,7 @@ export class SidebarComponent {
     },
     {
       name: 'Inventory',
-      expanded: true,
+      expanded: false,
       features: [
         { name: 'Transfer',   path: '/inventory/transfer'   },
         { name: 'Categorías', path: '/inventory/categories' },

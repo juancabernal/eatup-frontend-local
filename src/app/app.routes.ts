@@ -24,8 +24,15 @@ export const routes: Routes = [
     children: [
       {
         path: '',
-        redirectTo: 'commercial/sales',
+        redirectTo: 'home',
         pathMatch: 'full'
+      },
+      {
+        path: 'home',
+        loadComponent: () =>
+          import('./features/home/pages/home-page/home-page.component').then(
+            m => m.HomePageComponent
+          )
       },
       {
         path: 'payment/cashreceipt',

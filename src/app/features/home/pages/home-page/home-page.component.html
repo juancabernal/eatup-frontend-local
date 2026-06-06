@@ -1,0 +1,35 @@
+<div class="home-page">
+  <section class="hero-card">
+    <div class="hero-copy">
+      <span class="eyebrow">Menú de inicio</span>
+      <h1>Bienvenido a EatUp</h1>
+      <p>Gestiona ventas, inventario, pagos y operación desde un solo lugar.</p>
+    </div>
+    <div class="hero-badge" aria-hidden="true">
+      <span>🍽️</span>
+    </div>
+  </section>
+
+  <section class="quick-access-section" aria-labelledby="quick-access-title">
+    <div class="section-heading">
+      <div>
+        <h2 id="quick-access-title">Accesos rápidos</h2>
+        <p>Elige un módulo para continuar con tu operación diaria.</p>
+      </div>
+    </div>
+
+    <div class="quick-grid">
+      @for (card of quickAccessCards; track card.path) {
+        <a class="quick-card" [class.green]="card.accent === 'green'" [routerLink]="card.path">
+          <div class="card-topline">
+            <span class="card-icon">{{ card.icon }}</span>
+            <span class="card-pill">Abrir</span>
+          </div>
+          <h3>{{ card.title }}</h3>
+          <p>{{ card.description }}</p>
+          <span class="card-link">Ir al módulo <span aria-hidden="true">→</span></span>
+        </a>
+      }
+    </div>
+  </section>
+</div>
