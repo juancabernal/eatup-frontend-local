@@ -39,7 +39,7 @@ export class LoginPageComponent {
       next: () => {
         const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
         void this.router.navigateByUrl(
-          returnUrl && returnUrl !== '/login' ? returnUrl : '/commercial/sales'
+          returnUrl && returnUrl !== '/login' ? returnUrl : '/home'
         );
         this.cdr.markForCheck();
       },
