@@ -2,8 +2,18 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 
+type DashboardIcon =
+  | 'home'
+  | 'sales'
+  | 'recipes'
+  | 'products'
+  | 'categories'
+  | 'locations'
+  | 'transfer'
+  | 'payments';
+
 interface QuickAccessCard {
-  icon: string;
+  icon: DashboardIcon;
   title: string;
   description: string;
   path: string;
@@ -21,53 +31,60 @@ interface QuickAccessCard {
 export class HomePageComponent {
   protected readonly quickAccessCards: QuickAccessCard[] = [
     {
-      icon: '🧾',
+      icon: 'sales',
       title: 'Ventas',
       description: 'Registra órdenes, consulta el carrito y controla las ventas del día.',
       path: '/commercial/sales',
       accent: 'green'
     },
     {
-      icon: '🍲',
+      icon: 'recipes',
       title: 'Recetas',
       description: 'Administra preparaciones, precios y disponibilidad del menú.',
       path: '/inventory/recipes',
       accent: 'orange'
     },
     {
-      icon: '📦',
+      icon: 'products',
       title: 'Productos',
       description: 'Consulta y actualiza los insumos disponibles en inventario.',
       path: '/inventory/product',
       accent: 'green'
     },
     {
-      icon: '🏷️',
+      icon: 'categories',
       title: 'Categorías',
       description: 'Organiza productos y recetas para mantener el catálogo claro.',
       path: '/inventory/categories',
       accent: 'orange'
     },
     {
-      icon: '📍',
+      icon: 'locations',
       title: 'Sedes',
       description: 'Gestiona ubicaciones operativas y puntos de atención.',
       path: '/inventor/locations',
       accent: 'green'
     },
     {
-      icon: '🔄',
+      icon: 'transfer',
       title: 'Transferencias',
       description: 'Revisa movimientos entre sedes y trazabilidad de inventario.',
       path: '/inventory/transfer',
       accent: 'orange'
     },
     {
-      icon: '💳',
+      icon: 'payments',
       title: 'Pagos',
       description: 'Accede a comprobantes de caja, facturas y métodos de pago.',
       path: '/payment/cashreceipt',
       accent: 'green'
+    },
+    {
+      icon: 'home',
+      title: 'Inicio',
+      description: 'Vuelve al menú principal para seleccionar otro módulo operativo.',
+      path: '/home',
+      accent: 'orange'
     }
   ];
 }
